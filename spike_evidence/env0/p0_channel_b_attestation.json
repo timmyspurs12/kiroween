@@ -1,0 +1,71 @@
+{
+  "record_identity": {
+    "artifact": "env0/p0_channel_b_attestation.json",
+    "issued": "2026-11-04",
+    "record_type": "Append-only owner-attestation addendum and Channel B closure confirmation",
+    "references": {
+      "standing_p0_amendment": "env0/p0_disposition_amendment.json (sha256 a14cdca5835fb40a2ae0e960a90fd34473c6d5a5ff761fd826b8286d9dccc824) — source of the Channel A / Channel B definitions and closure_requirements; NOT modified by this record",
+      "channel_b_amendment": "env0/p0_channel_b_amendment.json (sha256 e04cfcb6f68c553067d574eb1a88c91739fd52b87d6ce1dd3aba3146cd44147c) — owner channel authorization, baseline candidate inventory, and interim closure; NOT modified by this record",
+      "channel_a_investigation": "env0/p0_channel_a_investigation.md (sha256 4e58ce27055ef2d7e1df1dd0722fe854452de11f5328f6c083a1920fd8000f75) — negative Channel A recovery outcome; NOT modified by this record"
+    },
+    "edit_policy": "Append-only. Neither existing P0 amendment, neither prior Channel A nor Channel B record, none of the six baseline files, no historical specification, and no existing checksum manifest is modified. This record and its checksum manifest are the only additions, plus the closure confirmation embedded herein (strictly necessary append-only closure per the directive)."
+  },
+
+  "owner_attestation": {
+    "question_asked_exact": "Can you personally attest, to the best of your knowledge, that all six transcript-derived files faithfully reproduce their corresponding originally emitted messages?",
+    "owner_response_exact": "YES",
+    "attestation_statement_recorded": "The project owner personally attests that, to the best of their knowledge, all six transcript-derived files faithfully reproduce their corresponding originally emitted messages.",
+    "attestation_date": "2026-11-04",
+    "attestation_source": "Project owner, directive 'NecroSpec — Final Channel B Attestation Addendum' (2026-11-04), section 1.",
+    "nature_of_evidence": "This is an OWNER ATTESTATION, not independent cryptographic verification. It strengthens the recorded provenance grade from channel-authorization-plus-process-record to channel-authorization-plus-process-record-plus-explicit-personal-faithfulness-attestation. It does not, and cannot, substitute for byte-level comparison against original streams."
+  },
+
+  "attestation_scope": {
+    "applies_to": "Exactly the six baseline candidates recorded in env0/p0_channel_b_amendment.json (baseline_candidates). Their paths are reused unchanged; their SHA-256 digests are quoted below AS ALREADY RECORDED there (fresh computation was performed and verified against these digests in the Channel B pass; the files were not regenerated, rewritten, normalized, or replaced — their byte-identity was re-confirmed this pass via 'sha256sum -c' over spec/SHA256SUMS, 6/6 OK).",
+    "baseline_files": [
+      { "path": "spike_evidence/spec/rev4_extract.md", "sha256_as_recorded": "d1f0aa97a7805663ef3a47dbe209c2f0b36ee8f8ee012926746550a6790b5bad", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" },
+      { "path": "spike_evidence/spec/rev5.md", "sha256_as_recorded": "3643a3c0596cc3bdffb2df407ab7db3dcfcd83550282a1505fd1c2ec8549894e", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" },
+      { "path": "spike_evidence/spec/rev6_errata.md", "sha256_as_recorded": "386920fa161c85b56d7c1ae90b41f0b3de12cf2149727bef4e7847d3330b1616", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" },
+      { "path": "spike_evidence/spec/rev61_errata.md", "sha256_as_recorded": "5d7a65b2b4a96731df3fd4196282b33aef06e1c9866bfae43fb9dfc06936aab8", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" },
+      { "path": "spike_evidence/spec/rev62_errata.md", "sha256_as_recorded": "beb8bf2e190b01523e8603d696aadd385f0d89e6651a972efb5d3c5145c42f4c", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" },
+      { "path": "spike_evidence/spec/rev63_errata.md", "sha256_as_recorded": "e868810c17d4259914bcd4c4c7c015020d848481d27c3a27daae1e57ccf68e3d", "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE" }
+    ]
+  },
+
+  "attestation_vs_authentication": {
+    "distinction": "Owner attestation = a recorded personal statement of the project owner, carrying the weight of their declaration and nothing more. Independent authentication = cryptographic or platform-origin evidence establishing byte identity without reliance on any person's statement (e.g., a lossless platform export byte-compared to the extracts). Only the former exists. Nothing in this record may be described as platform-origin authentication or byte-identical source recovery.",
+    "all_six_non_claims_reaffirmed": "The six non-claims recorded in env0/p0_channel_b_amendment.json limitations_and_non_claims (statements 1–6) are reaffirmed in full and remain controlling."
+  },
+
+  "unavailability_confirmations": {
+    "original_source_hashes": "CONFIRMED UNAVAILABLE — no original-stream hash has been established; none was ever computed; none is invented by this record.",
+    "byte_level_comparison": "CONFIRMED UNAVAILABLE — no byte-for-byte comparison of the extracts against the originally emitted platform messages has been performed or is possible in the current repository workflow.",
+    "channel_a_status": "CONFIRMED STILL FAILED — Channel A recovery remains incomplete per env0/p0_channel_a_investigation.md ('P0 ABORTED — CHANNEL A RECOVERY INCOMPLETE'); no lossless platform-origin export has been recovered; original platform-origin byte streams remain unavailable."
+  },
+
+  "technical_authorization_boundary": {
+    "statement": "This attestation does NOT authorize technical execution of any kind. Env-0 remains PROPOSED and SEPARATELY SCOPED — not authorized and not executed by this record. Exp-1 through Exp-4 remain NOT EXECUTED. No dependency installation, compilation, container build, experiment, or deployment is authorized by this attestation, and no technical validation or runtime parity is claimed anywhere in it.",
+    "gates": {
+      "Env-0": "PROPOSED, SEPARATELY SCOPED — NOT AUTHORIZED, NOT EXECUTED",
+      "Exp-1": "NOT EXECUTED",
+      "Exp-2": "NOT EXECUTED",
+      "Exp-3": "NOT EXECUTED",
+      "Exp-4": "NOT EXECUTED"
+    }
+  },
+
+  "channel_b_closure_confirmation": {
+    "type": "Append-only closure confirmation (strictly necessary addition per directive §5)",
+    "re_evaluation": "The standing P0 amendment's Channel B route (closure_requirements.channel_B_user_attested_fallback) requires 'user-attested file copies of the six documents with an explicit recorded attestation that they are faithful copies of the originally emitted messages.' Condition-by-condition assessment: (1) explicit owner authorization of Channel B — SATISFIED (Channel B amendment, 'YES — I AUTHORIZE CHANNEL B.', 2026-11-04); (2) the six files exist with recorded integrity — SATISFIED (fresh digests in the Channel B amendment; byte-identity re-verified this pass, 6/6 OK); (3) explicit recorded attestation of faithful reproduction — SATISFIED BY THIS RECORD (owner response 'YES' with the recorded attestation statement and date); (4) the weaker provenance grade recorded as such, with non-claims — SATISFIED (Channel B amendment + reaffirmation herein); (5) classification never as originals — SATISFIED (all six TRANSCRIPT-DERIVED USER-ATTESTED BASELINE); (6) provenance limitations and non-authorization boundaries recorded — SATISFIED. The previously missing element was item (3); it is now on record.",
+    "closure_decision": "All Channel B conditions of the standing P0 amendment are satisfied.",
+    "confirmed_disposition": "P0 PASS — CHANNEL B USER-ATTESTED BASELINE ACCEPTED",
+    "mandatory_clarification_retained": "CHANNEL A FAILED — ORIGINAL SOURCE PROVENANCE INCOMPLETE",
+    "characterization_limit": "This closure is NOT platform-origin authentication and NOT byte-identical source recovery, and must not be described as either. It is the recorded acceptance of a user-attested baseline under the owner's explicit authorization and explicit personal attestation.",
+    "supersession_note": "This confirmation is append-only: it re-issues and retains the disposition recorded in env0/p0_channel_b_amendment.json p0_closure, adding the attestation element the standing amendment's Channel B definition calls for. Neither prior record is edited; wherever read together, this record completes rather than replaces them."
+  },
+
+  "preservation_statement": {
+    "verified_before_writing": "PUBLICATION_SHA256SUMS 11/11 OK; spec/SHA256SUMS 6/6 OK; REV64/REV641/REV642_SHA256SUMS 2/2 each; P0_CHANNEL_A_SHA256SUMS 1/1 OK; P0_CHANNEL_B_SHA256SUMS 1/1 OK; both standing P0 records read and integrity-confirmed at the digests cited above.",
+    "verified_after_writing": "Re-verified with identical results after this record and its manifest were written (recorded in the session final report)."
+  }
+}
