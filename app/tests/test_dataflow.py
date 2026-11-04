@@ -545,6 +545,46 @@ def test_schema_v4_additive_and_contracts_intact():
     assert "dataflow" not in single and "logical" not in single
 
 
+def test_operand_decl_provenance_contract_for_ui():
+    """Regression (M6.1): the UI's operand chip reads decl.source_file and
+    decl.origin. Lock the exact payload contract so a key rename cannot
+    silently break copybook provenance rendering again."""
+    r = run(("src/SCX.cbl", SCANNED), ("cpy/AUDREC.cpy", AUDREC))
+    comp = ops_of(r, "src/SCX.cbl")[0]
+    op_lk = [o for o in comp["source_operands"]
+             if o.get("name") == "LK-AMT"][0]
+    d = op_lk["decl"]
+    assert d["source_file"] == "cpy/AUDREC.cpy"
+    assert d["origin"] == "copybook"
+    assert d["decl_id"] and d["line"] == 4
+    assert d["via_copybooks"] == ["cpy/AUDREC.cpy"]
+    assert "file" not in d and "origin_kind" not in d
+
+
+def test_cross_program_link_decl_ids_match_logical_model():
+    """Regression (M6.1): FieldFlow matches cross-program links against
+    the logical model's decl_id; the ids must be identical on both
+    sides of the envelope."""
+    name, entries = ingest_dir()
+    r = analyze_project(name, entries)
+    links = r["cross_file"]["dataflow"]["cross_program_links"]
+    for l in links:
+        if l["status"] != "established":
+            continue
+        if l["from_decl"] is None or l["to_decl"] is None:
+            continue
+        caller_model = r["cross_file"]["logical"][l["caller"]]
+        callee_model = r["cross_file"]["logical"][l["callee"]]
+        assert any(d["decl_id"] == l["from_decl"]
+                   for d in caller_model["declarations"])
+        assert any(d["decl_id"] == l["to_decl"]
+                   for d in callee_model["declarations"])
+    aud = [l for l in links if l["caller"] == "src/AUDTOTAL.cbl"][0]
+    wst = [d for d in r["cross_file"]["logical"]["src/AUDTOTAL.cbl"]
+           ["declarations"] if d["name"] == "WS-TOTAL"][0]
+    assert aud["from_decl"] == wst["decl_id"]
+
+
 def test_dfa_assumptions_recorded():
     name, entries = ingest_dir()
     r = analyze_project(name, entries)

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ProjectEnvelope,
   ProjectFile,
@@ -183,7 +183,7 @@ function OperandChip({ o }: { o: FlowOperand }) {
       className={`df-operand ${uncertain ? "uncertain" : ""}`}
       title={
         decl
-          ? `${decl.file}:L${decl.line} (${decl.origin_kind ?? decl.origin} origin)` +
+          ? `${decl.source_file}:L${decl.line} (${decl.origin} origin)` +
             (decl.via_copybooks && decl.via_copybooks.length
               ? ` via ${decl.via_copybooks.join(" > ")}`
               : "")
@@ -191,7 +191,7 @@ function OperandChip({ o }: { o: FlowOperand }) {
       }
     >
       {operandLabel(o)}
-      {decl?.origin_kind === "copybook" && <span className="df-cb"> ⌘</span>}
+      {decl?.origin === "copybook" && <span className="df-cb"> ⌘</span>}
       {uncertain && <span className="df-unres"> ({o.resolution})</span>}
     </span>
   );
@@ -250,10 +250,12 @@ function OpRow({ o, conds }: { o: DataflowProgram["operations"][number]; conds: 
   );
 }
 
-function FieldFlow({ flow, logical, declId }: {
+function FieldFlow({ flow, logical, declId, links, onSelect }: {
   flow: DataflowProgram;
   logical?: LogicalModel;
   declId: string;
+  links: CrossProgramLink[];
+  onSelect: (id: string) => void;
 }) {
   const graph = flow.graph;
   const did = "d:" + declId;
@@ -342,6 +344,52 @@ function FieldFlow({ flow, logical, declId }: {
           ))}
         </div>
       )}
+      {links.filter((l) => l.from_decl === declId || l.to_decl === declId)
+        .length > 0 && (
+        <div className="df-field-block">
+          <span className="df-block-title">
+            crosses a program boundary (CALL USING)
+          </span>
+          {links
+            .filter((l) => l.from_decl === declId || l.to_decl === declId)
+            .map((l, i) => (
+              <div className="lg-ref-row" key={i}>
+                {l.from_decl === declId ? (
+                  <>
+                    <span className="lg-name">passed to</span>
+                    <button
+                      className="ref-decl"
+                      onClick={() => onSelect(l.callee)}
+                    >
+                      {l.callee}
+                    </button>
+                    <span className="xf-pos-item">
+                      as argument for parameter {l.parameter} (call L
+                      {l.call.line})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="lg-name">received from</span>
+                    <button
+                      className="ref-decl"
+                      onClick={() => onSelect(l.caller)}
+                    >
+                      {l.caller}
+                    </button>
+                    <span className="xf-pos-item">
+                      as parameter {l.parameter} for argument {l.argument}{" "}
+                      (call L{l.call.line})
+                    </span>
+                  </>
+                )}
+                <span className={`xf-status ${l.status}`}>
+                  {l.status === "established" ? "established" : l.reason}
+                </span>
+              </div>
+            ))}
+        </div>
+      )}
       <p className="ov-note">
         Static source structure only — not proof of runtime execution.
       </p>
@@ -416,6 +464,12 @@ function DataFlowView({ flow, links, program, onSelect }: {
                   {l.callee_reads.length > 0 && (
                     <span className="xf-size equal">
                       read at L{l.callee_reads[0]?.line}
+                    </span>
+                  )}
+                  {l.callee_reads.length === 0 && (
+                    <span className="xf-size unknown">
+                      no supported operation reads this parameter in the
+                      callee
                     </span>
                   )}
                   {l.caller_writes.length === 0 &&
@@ -652,6 +706,12 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
     ? xf.dataflow.programs[selected]
     : undefined;
   const [flowDecl, setFlowDecl] = useState<string | null>(null);
+  // declaration ids are program-scoped: switching programs invalidates
+  // any selected field flow (stale ids must never render against
+  // another program's model)
+  useEffect(() => {
+    setFlowDecl(null);
+  }, [selected]);
   const xfCov = env?.cross_file?.coverage;
   const outMappings = useMemo(
     () => (xf && selected ? xf.mappings.filter((m) => m.from === selected) : []),
@@ -937,6 +997,8 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                   flow={selFlow}
                   logical={selLogical}
                   declId={flowDecl}
+                  links={xf?.dataflow?.cross_program_links ?? []}
+                  onSelect={setSelected}
                 />
               </div>
             )}

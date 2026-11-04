@@ -388,10 +388,10 @@ export interface LogicalModel {
 export interface FlowDecl {
   decl_id: string;
   name: string;
-  file: string | null;
+  source_file: string;
   line: number | null;
   col: number | null;
-  origin: "parsed" | "scanned";
+  origin: "program" | "copybook";
   via_copybooks: string[];
   byte_length: number | null;
   picture: string | null;
@@ -410,7 +410,7 @@ export interface FlowOperand {
   parent?: string | null;
   text?: string;
   resolution?: string;
-  decl?: FlowDecl & { origin_kind?: string };
+  decl?: FlowDecl;
   candidates?: RefCandidate[];
 }
 
