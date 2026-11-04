@@ -614,6 +614,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
     for d in findings:
         severity_counts[d.severity] += 1
 
+    risk_count = sum(1 for d in findings if d.classification == CLASS_RISK)
     coverage = {
         "files_total": len(files) + len(skipped),
         "files_indexed": len(files),
@@ -628,6 +629,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
                                     + res_counts["dynamic"]),
         "dependencies_ambiguous": res_counts["ambiguous"],
         "cycles": len(cycles),
+        "needs_human_review": risk_count,
         "findings": {
             "error": severity_counts["error"],
             "warning": severity_counts["warning"],
@@ -668,10 +670,27 @@ def _fdiag_json(d: Diagnostic) -> dict:
 # impact analysis
 # =========================================================================
 
+def _reachable(adj: Dict[str, List[str]], start: str) -> List[str]:
+    """Deterministic breadth-first reachability over resolved edges,
+    excluding the start node itself; sorted output."""
+    seen = set()
+    frontier = [start]
+    while frontier:
+        nxt = []
+        for node in frontier:
+            for nxt_node in sorted(adj.get(node, [])):
+                if nxt_node not in seen and nxt_node != start:
+                    seen.add(nxt_node)
+                    nxt.append(nxt_node)
+        frontier = sorted(nxt)
+    return sorted(seen)
+
+
 def impact(project: dict, file_id: str) -> dict:
     """Impact for one file: direct dependencies/dependants (resolved edges
-    only), transitive dependants, and unresolved relationships touching it.
-    Dependency impact is source-reference impact, not runtime proof."""
+    only), transitive dependencies (forward) and transitive dependants
+    (reverse), and unresolved relationships touching it. Dependency impact
+    is source-reference impact, not runtime proof."""
     resolved_out: List[dict] = []
     resolved_in: List[dict] = []
     unresolved: List[dict] = []
@@ -681,24 +700,18 @@ def impact(project: dict, file_id: str) -> dict:
         elif e["to"] == file_id:
             (resolved_in if e["resolution"] == "resolved" else unresolved).append(e)
 
-    # transitive dependants over resolved edges (reverse reachability)
+    # forward and reverse adjacency over resolved edges
+    fwd: Dict[str, List[str]] = {}
     rev: Dict[str, List[str]] = {}
     for e in project["edges"]:
         if e["resolution"] == "resolved" and e["to"]:
+            fwd.setdefault(e["from"], []).append(e["to"])
             rev.setdefault(e["to"], []).append(e["from"])
-    for k in rev:
-        rev[k] = sorted(set(rev[k]))
-    seen = set()
-    frontier = [file_id]
-    while frontier:
-        nxt = []
-        for node in frontier:
-            for dep in rev.get(node, []):
-                if dep not in seen and dep != file_id:
-                    seen.add(dep)
-                    nxt.append(dep)
-        frontier = sorted(nxt)
-    transitive = sorted(seen)
+    for m in (fwd, rev):
+        for k in m:
+            m[k] = sorted(set(m[k]))
+    transitive_dependencies = _reachable(fwd, file_id)
+    transitive_dependants = _reachable(rev, file_id)
 
     return {
         "file": file_id,
@@ -708,7 +721,8 @@ def impact(project: dict, file_id: str) -> dict:
         "direct_dependants": [
             {"from": e["from"], "kind": e["kind"], "line": e["line"],
              "evidence": e["text"]} for e in resolved_in],
-        "transitive_dependants": transitive,
+        "transitive_dependencies": transitive_dependencies,
+        "transitive_dependants": transitive_dependants,
         "unresolved_relationships": [
             {"kind": e["kind"], "resolution": e["resolution"],
              "target": e["target"], "from": e["from"], "to": e["to"],

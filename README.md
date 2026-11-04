@@ -38,7 +38,9 @@ file gets a per-file result (the full single-file envelope for programs
 within the frozen subset; a rejection reason for files using out-of-subset
 constructs such as COPY/CALL — their dependencies are still mapped, no text
 is expanded). Impact analysis lists direct dependencies/dependants,
-transitive dependants and unresolved relationships per file. Exit codes:
+transitive dependencies (forward) and transitive dependants (reverse), and
+unresolved relationships per file; project coverage reports risk-classified
+findings as items needing human review. Exit codes:
 `0` no violation-class findings, `1` violations found (e.g. a missing
 copybook), `2` usage/I-O error. The workstation UI gains a Project mode
 (header switch): load the example project or upload a directory, browse

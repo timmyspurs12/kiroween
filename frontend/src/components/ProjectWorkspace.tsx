@@ -336,6 +336,14 @@ export function ProjectWorkspace(props: {
                           <span className="pj-rel-ev">{d.evidence}</span>
                         </div>
                       ))}
+                      {selImpact.transitive_dependencies.length > 0 && (
+                        <div className="pj-rel-row">
+                          <span className="pj-rel-kind">transitive dependencies</span>
+                          <span className="pj-rel-ev">
+                            {selImpact.transitive_dependencies.join(", ")}
+                          </span>
+                        </div>
+                      )}
                       {selImpact.transitive_dependants.length > 0 && (
                         <div className="pj-rel-row">
                           <span className="pj-rel-kind">transitive dependants</span>

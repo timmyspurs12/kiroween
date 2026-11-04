@@ -246,6 +246,7 @@ export interface ProjectImpact {
   file: string;
   direct_dependencies: { to: string; kind: string; line: number; evidence: string }[];
   direct_dependants: { from: string; kind: string; line: number; evidence: string }[];
+  transitive_dependencies: string[];
   transitive_dependants: string[];
   unresolved_relationships: {
     kind: string; resolution: string; target: string;

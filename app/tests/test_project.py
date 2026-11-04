@@ -280,6 +280,59 @@ def test_direct_and_transitive_impact():
     assert "not proof" in imp["note"]
 
 
+def test_forward_transitive_dependencies_across_cycle():
+    # CYCTEST -> P -> Q (cycle): forward closure must terminate and include
+    # both copybooks; a copybook in the cycle transitively depends on its
+    # partner but never on itself
+    r = example_project()
+    imp = impact(r, "src/CYCTEST.cbl")
+    assert imp["transitive_dependencies"] == [
+        "copybooks/P.cpy", "copybooks/Q.cpy"]
+    imp_q = impact(r, "copybooks/Q.cpy")
+    assert imp_q["transitive_dependencies"] == ["copybooks/P.cpy"]
+    assert imp_q["transitive_dependants"] == [
+        "copybooks/P.cpy", "src/CYCTEST.cbl"]
+
+
+def test_coverage_reports_items_needing_human_review():
+    # risk-class findings (dynamic CALL, ambiguous COPY, cycle) are the
+    # review items; the missing-copybook violation is not a review item
+    r = example_project()
+    assert r["coverage"]["needs_human_review"] == 3
+    # single-file schema uses the same semantics: risks, not violations
+    gl = r["per_file"]["src/GLUPDATE.cbl"]["result"]
+    assert gl["coverage"]["needs_human_review"] == \
+        gl["coverage"]["findings"]["risk"]
+
+
+def test_single_file_cli_unchanged():
+    # Milestone 3 must not reinterpret the single-file command
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "OK.cbl"
+        p.write_text(
+            "       IDENTIFICATION DIVISION.\n"
+            "       PROGRAM-ID. OKP.\n"
+            "       DATA DIVISION.\n"
+            "       LINKAGE SECTION.\n"
+            "       01  LK-X             PIC 9.\n"
+            "       PROCEDURE DIVISION USING LK-X.\n"
+            "           GOBACK.\n")
+        clean = subprocess.run(CLI + ["analyze", str(p)],
+                               capture_output=True, text=True, timeout=30)
+        assert clean.returncode == 0 and "OKP" in clean.stdout
+        (p.parent / "BAD.cbl").write_text(
+            "       IDENTIFICATION DIVISION.\n"
+            "       PROGRAM-ID. BADP.\n"
+            "       DATA DIVISION.\n"
+            "       LINKAGE SECTION.\n"
+            "       PROCEDURE DIVISION.\n"
+            "           GOBACK.\n")
+        bad = subprocess.run(CLI + ["analyze", str(p.parent / "BAD.cbl")],
+                             capture_output=True, text=True, timeout=30)
+        assert bad.returncode == 1  # grammar violation -> exit 1
+
+
 def test_impact_lists_unresolved_relationships():
     r = example_project()
     imp = impact(r, "src/PAYROLL.cbl")
