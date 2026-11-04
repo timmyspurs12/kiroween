@@ -242,6 +242,65 @@ export interface ProjectFinding {
   finding_id: string;
 }
 
+// ---- cross-file data understanding (Milestone 4) ------------------------
+
+export interface CrossFileDecl {
+  file: string | null;
+  name: string;
+  level: number | null;
+  section: string | null;
+  line: number | null;
+  col: number | null;
+  picture: string | null;
+  usage: string | null;
+  byte_length: number | null;
+  origin: "parsed" | "scanned";
+  unsupported_clause: string | null;
+}
+
+export interface CrossFilePosition {
+  position: number;
+  status: "established" | "unmatched-argument" | "unmatched-parameter";
+  caller?: { name: string; form: string; passing: string; passing_explicit: boolean; line: number | null; col: number | null };
+  caller_decl?: CrossFileDecl | null;
+  receiver?: { name: string; line: number | null; col: number | null };
+  receiver_decl?: CrossFileDecl | null;
+  size_caller?: number | null;
+  size_receiver?: number | null;
+  size_status?: "equal" | "mismatch" | "unknown";
+}
+
+export interface CrossFileMapping {
+  from: string;
+  to: string | null;
+  target: string;
+  line: number;
+  col: number;
+  text: string;
+  status: "established" | "incomplete" | "unresolved";
+  reason: string | null;
+  positions: CrossFilePosition[];
+}
+
+export interface CrossFileInterface {
+  file: string;
+  origin: "parsed" | "scanned";
+  params: { name: string; line: number | null; col: number | null; declaration: CrossFileDecl | null }[];
+  copybooks: { copybook: string; via: "direct" | "nested"; chain: string[] }[];
+}
+
+export interface CrossFileSection {
+  schema_note: string;
+  interfaces: Record<string, CrossFileInterface>;
+  mappings: CrossFileMapping[];
+  copybook_declarations: Record<
+    string,
+    { name: string; level: number; picture: string | null; usage: string | null; byte_length: number | null; line: number; col: number; unsupported_clause: string | null }[]
+  >;
+  assumptions: { id: string; topic: string; detail: string }[];
+  coverage: Record<string, number>;
+}
+
 export interface ProjectImpact {
   file: string;
   direct_dependencies: { to: string; kind: string; line: number; evidence: string }[];
@@ -252,11 +311,16 @@ export interface ProjectImpact {
     kind: string; resolution: string; target: string;
     from: string; to: string | null; line: number; evidence: string;
   }[];
+  data_flow: {
+    sends_data_to: { with: string; target: string; line: number; status: string; evidence: string }[];
+    receives_data_from: { with: string; target: string; line: number; status: string; evidence: string }[];
+    unresolved_data_relationships: { with: string | null; target: string; line: number; status: string; evidence: string }[];
+  };
   note: string;
 }
 
 export interface ProjectEnvelope {
-  schema_version: 1;
+  schema_version: 1 | 2;
   project: { name: string };
   files: ProjectFile[];
   skipped: { path: string; reason: string; code: string }[];
@@ -265,6 +329,7 @@ export interface ProjectEnvelope {
   cycles: string[][];
   per_file: Record<string, { status: string; reason: string | null; result?: AnalysisResponse }>;
   findings: ProjectFinding[];
+  cross_file?: CrossFileSection;
   coverage: Record<string, number | Record<string, number>>;
   assumptions: { id: string; topic: string; detail: string }[];
   summary: { ok: boolean; errors: number; warnings: number; infos: number; programs: number; copybooks: number };

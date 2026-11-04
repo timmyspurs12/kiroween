@@ -34,7 +34,7 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 1
+PROJECT_SCHEMA_VERSION = 2  # v2: adds the cross_file section (Milestone 4)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -348,7 +348,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 1)."""
+    "error": reason}] — build the full project envelope (schema_version 2,
+    adding the cross_file section)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -600,6 +601,13 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         per_file[fid] = {"status": status, "reason": reason,
                          "result": result}
 
+    # ---- cross-file data understanding (Milestone 4) ---------------------
+    # function-level import: xfile reads shared scan helpers from this module
+    from necro.xfile import XFD_ASSUMPTIONS, analyze_cross_file
+    cross_file, xfd_findings = analyze_cross_file(
+        files, contents, edges, per_file)
+    findings.extend(xfd_findings)
+
     findings.sort(key=lambda d: (d.code, d.line is None, d.line or 0,
                                  d.col or 0))
 
@@ -630,6 +638,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "dependencies_ambiguous": res_counts["ambiguous"],
         "cycles": len(cycles),
         "needs_human_review": risk_count,
+        "cross_file": cross_file["coverage"],
         "findings": {
             "error": severity_counts["error"],
             "warning": severity_counts["warning"],
@@ -655,8 +664,12 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "cycles": cycles,
         "per_file": {fid: per_file[fid] for fid in sorted(per_file)},
         "findings": [_fdiag_json(d) for d in findings],
+        "cross_file": cross_file,
         "coverage": coverage,
-        "assumptions": PROJECT_ASSUMPTIONS,
+        "assumptions": PROJECT_ASSUMPTIONS + [
+            {"id": a["id"], "topic": a["topic"], "detail": a["detail"]}
+            for a in XFD_ASSUMPTIONS
+        ],
         "summary": summary,
     }
 
@@ -713,6 +726,23 @@ def impact(project: dict, file_id: str) -> dict:
     transitive_dependencies = _reachable(fwd, file_id)
     transitive_dependants = _reachable(rev, file_id)
 
+    # data-flow impact (established/incomplete CALL USING mappings only)
+    sends = []
+    receives = []
+    unresolved_data = []
+    for m in project.get("cross_file", {}).get("mappings", []):
+        row = {"with": (m["to"] if m["from"] == file_id else m["from"]),
+               "target": m["target"], "line": m["line"],
+               "status": m["status"], "evidence": m["text"]}
+        if m["from"] == file_id:
+            (sends if m["status"] != "unresolved"
+             else unresolved_data).append(row)
+        elif m["to"] == file_id:
+            (receives if m["status"] != "unresolved"
+             else unresolved_data).append(row)
+    for lst in (sends, receives, unresolved_data):
+        lst.sort(key=lambda r: (r["with"], r["line"]))
+
     return {
         "file": file_id,
         "direct_dependencies": [
@@ -728,8 +758,13 @@ def impact(project: dict, file_id: str) -> dict:
              "target": e["target"], "from": e["from"], "to": e["to"],
              "line": e["line"], "evidence": e["text"]}
             for e in sorted(unresolved, key=lambda x: (x["from"], x["line"]))],
-        "note": "Dependency impact reflects source references, not proof "
-                "of runtime impact.",
+        "data_flow": {
+            "sends_data_to": sends,
+            "receives_data_from": receives,
+            "unresolved_data_relationships": unresolved_data,
+        },
+        "note": "Dependency and data-flow impact reflect static source "
+                "references, not proof of runtime impact.",
     }
 
 

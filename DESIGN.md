@@ -168,6 +168,25 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   discovered source statement with line evidence; the graph is a view of
   the edges list, never a separate model.
 
+## 7b. Milestone 4 interface additions (cross-file data)
+
+- The per-file impact panel gains data-flow rows (`data →` / `← data`)
+  with the same evidence treatment as dependency rows; unresolved data
+  relationships are visually separated.
+- A CROSS-FILE DATA section appears when the selected file participates in
+  CALL USING mappings: the receiving interface (parser-backed or scanned
+  origin shown), associated COPYbooks (nested chains labelled), and one
+  card per CALL with positional rows — argument (line, passing style) →
+  parameter (line), plus per-side declaration origin + byte sizes.
+- Established is visually distinct from uncertain: green left border +
+  `size =` for established/equal; amber border + `size ≠ … by reference`
+  for mismatches; dimmed cards for unresolved targets. Unmatched
+  arguments/parameters and "no declaration found" render in amber —
+  uncertainty is never styled as success.
+- Coverage adds mapping counts (established / incomplete / unresolved);
+  every cross-file finding reuses the project findings list (Diagnostic
+  model), so classification + finding ids stay uniform.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

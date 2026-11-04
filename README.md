@@ -47,6 +47,34 @@ copybook), `2` usage/I-O error. The workstation UI gains a Project mode
 files, inspect relationships and impact, and view the dependency graph —
 solid edges resolved, dashed edges unresolved.
 
+### Cross-file program understanding (CALL USING + copybooks, Milestone 4)
+
+Project analysis also builds an evidence-backed model of data passed
+between programs. For every statically resolved CALL edge it scans the
+caller's `CALL "target" USING …` argument list (passing style recorded —
+`BY REFERENCE`/`BY CONTENT`/`BY VALUE` as written, standard by-reference
+defaulting marked as such) and the receiving program's
+`PROCEDURE DIVISION USING` parameters. Arguments correspond to parameters
+**by position only** — identifiers are never used to infer correspondence
+or business meaning. Each mapping is classified `established`,
+`incomplete` (counts differ, or a declaration is missing on one side) or
+`unresolved` (dynamic/unresolved target); representation comparison
+(byte sizes) runs **only** when both declarations are established, and a
+difference becomes a `XFD_PARAM_SIZE_MISMATCH` warning — never a claimed
+incompatibility from PIC text alone. Declarations come from the parser for
+subset programs (recorded `parsed`) and from a fixed-format declaration
+scan for non-subset programs and copybooks (`scanned`; single-line
+entries; `REDEFINES`/`OCCURS` etc. are recorded as unsupported, not
+interpreted). Copybook declarations are indexed with their file + line and
+associated with copying programs (nested inclusion chains, cycles guarded,
+ambiguous/missing copybooks yield no association); association is
+inspection evidence only — per-file semantic analysis still does not see
+copybook contents (no textual expansion). The impact view gains a separate
+`data_flow` section (who sends/receives data, unresolved relationships);
+neither it nor the dependency view claims verified runtime impact. Findings
+reuse the Diagnostic model; schema grows additively (project envelope
+`schema_version` 1 → 2).
+
 ### Command-line use (batch / CI)
 
 ```bash

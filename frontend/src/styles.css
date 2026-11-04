@@ -1904,3 +1904,73 @@ button {
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---- cross-file data (Milestone 4) ---- */
+.xf-card {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--state-blue);
+  border-radius: var(--r-sm);
+  background: var(--surface-1);
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2);
+  display: grid;
+  gap: var(--sp-1);
+}
+.xf-card.established { border-left-color: var(--state-ok); }
+.xf-card.incomplete { border-left-color: var(--state-warn); }
+.xf-card.unresolved { border-left-color: var(--line); opacity: 0.85; }
+.xf-card-top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.xf-card-call { font-family: var(--mono); font-size: var(--fs-1); }
+.xf-target.unknown { color: var(--state-warn); font-size: var(--fs-0); }
+.xf-status {
+  font-size: var(--fs-0);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
+  border: 1px solid currentColor;
+}
+.xf-status.established, .xf-status.interface.parsed { color: var(--state-ok); }
+.xf-status.incomplete, .xf-status.interface.scanned { color: var(--state-warn); }
+.xf-status.unresolved { color: var(--state-blue); }
+.xf-pos {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding-left: var(--sp-3);
+  font-size: var(--fs-1);
+}
+.xf-pos.unmatched-argument, .xf-pos.unmatched-parameter { color: var(--state-warn); }
+.xf-pos-n { color: var(--ink-dim); min-width: 3.5ch; font-family: var(--mono); font-size: var(--fs-0); }
+.xf-pos-item { display: inline-flex; gap: var(--sp-1); align-items: baseline; }
+.xf-arg { font-family: var(--mono); }
+.xf-void { color: var(--state-warn); font-style: italic; }
+.xf-arrow { color: var(--ink-dim); }
+.xf-passing { color: var(--ink-dim); font-size: var(--fs-0); }
+.xf-decl { color: var(--ink-dim); font-size: var(--fs-0); }
+.xf-decl.missing { color: var(--state-warn); }
+.xf-size { font-family: var(--mono); font-size: var(--fs-0); }
+.xf-size.mismatch { color: var(--state-warn); }
+.xf-size.equal { color: var(--state-ok); }
+.xf-size.unknown { color: var(--ink-dim); }
+.xf-copybooks {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.xf-copybook {
+  font-family: var(--mono);
+  font-size: var(--fs-0);
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 0 var(--sp-1);
+}
+.pj-rel-kind.data { color: var(--state-blue); }
