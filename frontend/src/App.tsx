@@ -13,8 +13,10 @@ import { EditorPane } from "./components/EditorPane";
 import { Inspector } from "./components/Inspector";
 import { StatusBar } from "./components/StatusBar";
 import { PasteDialog } from "./components/PasteDialog";
+import { ProjectWorkspace } from "./components/ProjectWorkspace";
 
 export type TabId = "overview" | "data" | "references" | "diagnostics" | "tokens" | "ast";
+export type WorkspaceMode = "file" | "project";
 
 export interface SessionFile {
   id: string;
@@ -56,6 +58,8 @@ export default function App() {
   const [railOpen, setRailOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [mode, setMode] = useState<WorkspaceMode>("file");
+  const projectSources = useRef<Record<string, string>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -248,8 +252,26 @@ export default function App() {
         onAnalyze={() => void runAnalysis()}
         onToggleRail={() => setRailOpen((v) => !v)}
         onToggleInspector={() => setInspectorOpen((v) => !v)}
+        mode={mode}
+        onMode={setMode}
       />
       <div className="app-body">
+        {mode === "project" ? (
+          <ProjectWorkspace
+            sourcesRef={projectSources.current}
+            onOpenSource={(filename, content) => {
+              const f: SessionFile = {
+                id: `session-${nextSessionId++}`,
+                filename,
+                source: content,
+              };
+              setSessionFiles((fs) => [...fs, f]);
+              loadSessionFile(f);
+              setMode("file");
+            }}
+          />
+        ) : (
+          <>
         <Rail
           open={railOpen}
           samples={samples}
@@ -333,6 +355,8 @@ export default function App() {
           open={inspectorOpen}
           onClose={() => setInspectorOpen(false)}
         />
+          </>
+        )}
       </div>
       <StatusBar
         health={health}

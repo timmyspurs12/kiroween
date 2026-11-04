@@ -1,5 +1,5 @@
 import { AnalysisResponse, HealthInfo } from "../api";
-import { ActiveSource } from "../App";
+import { ActiveSource, WorkspaceMode } from "../App";
 
 const STAGES = ["Preflight", "Lexical", "Grammar", "AST", "Semantic"];
 
@@ -12,6 +12,8 @@ export function TopBar(props: {
   onAnalyze: () => void;
   onToggleRail: () => void;
   onToggleInspector: () => void;
+  mode: WorkspaceMode;
+  onMode: (m: WorkspaceMode) => void;
 }) {
   const { active, dirty, analyzing, analysis, onAnalyze } = props;
   const summary = analysis?.summary ?? null;
@@ -65,6 +67,24 @@ export function TopBar(props: {
         </div>
       )}
       <div className="header-spacer" />
+      <div className="mode-switch" role="tablist" aria-label="Workspace mode">
+        <button
+          role="tab"
+          aria-selected={props.mode === "file"}
+          className={props.mode === "file" ? "active" : ""}
+          onClick={() => props.onMode("file")}
+        >
+          File
+        </button>
+        <button
+          role="tab"
+          aria-selected={props.mode === "project"}
+          className={props.mode === "project" ? "active" : ""}
+          onClick={() => props.onMode("project")}
+        >
+          Project
+        </button>
+      </div>
       {analysis && (
         <div className="pipeline-strip" role="img" aria-label="Pipeline layer states">
           {STAGES.map((name, i) => {

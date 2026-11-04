@@ -21,6 +21,30 @@ what needs human review) and `assumptions` (the model's recorded limits).
 This is the structured contract (`schema_version` 2) future multi-file and
 migration-readiness capabilities build on.
 
+### Project analysis (multi-file dependency intelligence, Milestone 3)
+
+```bash
+python3 app/cli.py project analyze ./my-cobol-project --json
+```
+
+Provide a directory of `.cbl`/`.cob` programs and `.cpy` copybooks (nested
+directories supported). NecroSpec discovers COPY and CALL relationships from
+source evidence, resolves them against the project (exact basename-stem
+match — COPY prefers `.cpy`, CALL prefers programs), and reports resolved,
+missing, ambiguous, dynamic and unresolved relationships with the source
+line as evidence. It detects cyclic copybook inclusion, flags duplicate
+basenames, rejects unsafe paths, and never silently skips a file. Every
+file gets a per-file result (the full single-file envelope for programs
+within the frozen subset; a rejection reason for files using out-of-subset
+constructs such as COPY/CALL — their dependencies are still mapped, no text
+is expanded). Impact analysis lists direct dependencies/dependants,
+transitive dependants and unresolved relationships per file. Exit codes:
+`0` no violation-class findings, `1` violations found (e.g. a missing
+copybook), `2` usage/I-O error. The workstation UI gains a Project mode
+(header switch): load the example project or upload a directory, browse
+files, inspect relationships and impact, and view the dependency graph —
+solid edges resolved, dashed edges unresolved.
+
 ### Command-line use (batch / CI)
 
 ```bash
@@ -60,7 +84,7 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 80 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 107 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
@@ -68,7 +92,7 @@ python3 -m pytest app/tests/ -v
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**80 passed in ~1.5 s**.
+**107 passed in ~2.3 s**.
 
 ## API
 
@@ -91,6 +115,12 @@ authoritative backend token stream once an analysis exists.
 app/
   server.py           stdlib HTTP server: JSON API + static host for web_dist
   cli.py              scriptable engine access (batch/CI), stdlib only
+  necro/project.py    multi-file ingestion, COPY/CALL discovery, dependency
+                      graph, cycles, impact analysis (project schema v1)
+examples/
+  sample-project/     realistic multi-file fixture: resolved/missing/
+                      ambiguous copybooks, static+dynamic CALLs, a cycle,
+                      nested directories, duplicate basenames
   necro/              the engine (L1 preflight, L2 lexer, L3 grammar,
                       L4 semantic AST, fixtures, diagnostics registry)
   tests/              pytest suite (engine + HTTP contract)

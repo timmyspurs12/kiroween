@@ -201,3 +201,90 @@ export async function analyzeSource(
   if (!res.ok) await readError(res);
   return (await res.json()) as AnalysisResponse;
 }
+
+// ---- project intelligence (Milestone 3) ---------------------------------
+
+export interface ProjectFile {
+  file_id: string;
+  path: string;
+  kind: "program" | "copybook";
+  bytes: number;
+  lines: number;
+}
+
+export interface ProjectEdge {
+  kind: "copy" | "call";
+  from: string;
+  to: string | null;
+  target: string;
+  library?: string | null;
+  form?: string | null;
+  terminated?: boolean;
+  target_form?: string;
+  resolution: "resolved" | "missing" | "ambiguous" | "dynamic" | "unresolved";
+  candidates: string[];
+  line: number;
+  col: number;
+  text: string;
+}
+
+export interface ProjectFinding {
+  severity: "error" | "warning" | "info";
+  code: string;
+  message: string;
+  line: number | null;
+  col: number | null;
+  layer: string;
+  hint: string | null;
+  evidence: string | null;
+  classification: string;
+  detail: { file?: string; target?: string; candidates?: string[]; members?: string[] } | null;
+  finding_id: string;
+}
+
+export interface ProjectImpact {
+  file: string;
+  direct_dependencies: { to: string; kind: string; line: number; evidence: string }[];
+  direct_dependants: { from: string; kind: string; line: number; evidence: string }[];
+  transitive_dependants: string[];
+  unresolved_relationships: {
+    kind: string; resolution: string; target: string;
+    from: string; to: string | null; line: number; evidence: string;
+  }[];
+  note: string;
+}
+
+export interface ProjectEnvelope {
+  schema_version: 1;
+  project: { name: string };
+  files: ProjectFile[];
+  skipped: { path: string; reason: string; code: string }[];
+  references: Record<string, unknown>[];
+  edges: ProjectEdge[];
+  cycles: string[][];
+  per_file: Record<string, { status: string; reason: string | null; result?: AnalysisResponse }>;
+  findings: ProjectFinding[];
+  coverage: Record<string, number | Record<string, number>>;
+  assumptions: { id: string; topic: string; detail: string }[];
+  summary: { ok: boolean; errors: number; warnings: number; infos: number; programs: number; copybooks: number };
+  impact?: Record<string, ProjectImpact>;
+}
+
+export async function getExampleProject(): Promise<{ name: string; files: { path: string; content: string }[] }> {
+  const res = await fetch("/api/project/example");
+  if (!res.ok) await readError(res);
+  return (await res.json()) as { name: string; files: { path: string; content: string }[] };
+}
+
+export async function analyzeProject(
+  name: string,
+  files: { path: string; content: string }[],
+): Promise<ProjectEnvelope> {
+  const res = await fetch("/api/project", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, files }),
+  });
+  if (!res.ok) await readError(res);
+  return (await res.json()) as ProjectEnvelope;
+}

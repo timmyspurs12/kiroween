@@ -154,7 +154,21 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   regression. Any visual claim beyond the code/HTTP review above is
   therefore not made.
 
-## 7. Milestone 2 interface additions
+## 7. Milestone 3 interface additions (project mode)
+
+- Header gains a File/Project mode switch (same tokens, segmented control).
+- Project mode: load the bundled example project or upload a directory
+  (browser directory picker); file list with per-file status chips; selected
+  file shows per-file verdict, relationships with evidence lines, transitive
+  dependants and unresolved references (highlighted); project findings with
+  classification + finding ids; deterministic circular-layout dependency
+  graph (solid = resolved, dashed = missing/ambiguous/dynamic/unresolved);
+  coverage + recorded model limits rendered inline.
+- Correctness over decoration: every edge in the graph corresponds to a
+  discovered source statement with line evidence; the graph is a view of
+  the edges list, never a separate model.
+
+## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:
 
@@ -177,7 +191,7 @@ The visual identity is unchanged; the milestone adds information views:
   (statements analyzed vs total), how many findings need human review, and
   the recorded model limits.
 
-## 8. Skill credit
+## 9. Skill credit
 
 Methodology credit to the maintainers of `anthropics/skills` (frontend-design)
 and `addyosmani/agent-skills` (frontend-ui-engineering). Their text was used

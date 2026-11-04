@@ -26,10 +26,14 @@ sys.path.insert(0, APP_DIR)
 
 from necro.analyzer import analyze  # noqa: E402
 from necro.fixtures import SAMPLES  # noqa: E402
+from necro.project import analyze_project, impact  # noqa: E402
 from necro import __version__ as ENGINE_VERSION  # noqa: E402
 
 WEB_DIST = os.path.join(APP_DIR, "web_dist")
+EXAMPLE_PROJECT = os.path.normpath(os.path.join(
+    APP_DIR, "..", "examples", "sample-project"))
 MAX_BODY = 2 * 1024 * 1024  # 2 MiB (preflight itself caps source at 32 KiB)
+MAX_PROJECT_FILES = 500
 CONTENT_TYPES = ("text/html", "text/css", "text/javascript",
                  "application/javascript", "application/json",
                  "image/svg+xml", "image/png", "image/x-icon",
@@ -135,6 +139,18 @@ class Handler(BaseHTTPRequestHandler):
                                     "with explicit diagnostics; success is never "
                                     "fabricated",
             })
+        elif path == "/api/project/example":
+            if not os.path.isdir(EXAMPLE_PROJECT):
+                self._send_error_json(404, "NO_EXAMPLE_PROJECT",
+                                      "example project not found on disk")
+                return
+            from necro.project import ingest_directory
+            name, entries = ingest_directory(EXAMPLE_PROJECT)
+            files = [{"path": e["path"], "content": e["content"]}
+                     for e in entries if "content" in e]
+            errors = [{"path": e["path"], "error": e["error"]}
+                      for e in entries if "error" in e]
+            self._send_json({"name": name, "files": files, "errors": errors})
         elif path.startswith("/api/"):
             self._send_error_json(404, "UNKNOWN_ENDPOINT",
                                   f"no such API endpoint: {path}")
@@ -146,8 +162,52 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._serve_static(path)
 
+    def _handle_project(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self._send_error_json(400, "BAD_REQUEST", "invalid Content-Length")
+            return
+        if length <= 0 or length > MAX_BODY:
+            self._send_error_json(413, "PAYLOAD_TOO_LARGE",
+                                  f"body must be 1..{MAX_BODY} bytes")
+            return
+        try:
+            req = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            self._send_error_json(400, "BAD_JSON",
+                                  f"request is not valid JSON: {exc}")
+            return
+        if not isinstance(req, dict) or not isinstance(req.get("files"), list):
+            self._send_error_json(
+                422, "BAD_PROJECT",
+                'body must be {"name"?: str, "files": [{"path": str, "content": str}]}')
+            return
+        if len(req["files"]) > MAX_PROJECT_FILES:
+            self._send_error_json(413, "TOO_MANY_FILES",
+                                  f"project exceeds {MAX_PROJECT_FILES} files")
+            return
+        entries = []
+        for f in req["files"]:
+            if not isinstance(f, dict) or not isinstance(f.get("path"), str):
+                self._send_error_json(422, "BAD_PROJECT",
+                                      "each file needs string path and content")
+                return
+            entries.append({"path": f["path"], "content": f.get("content")})
+        name = req.get("name") if isinstance(req.get("name"), str) else "project"
+        result = analyze_project(name, entries)
+        # embed per-file impact so the API stays stateless
+        impact_index = {}
+        for f in result["files"]:
+            impact_index[f["file_id"]] = impact(result, f["file_id"])
+        result["impact"] = impact_index
+        self._send_json(result)
+
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+        if path == "/api/project":
+            self._handle_project()
+            return
         if path != "/api/analyze":
             self._send_error_json(404, "UNKNOWN_ENDPOINT",
                                   f"no such API endpoint: {path}")

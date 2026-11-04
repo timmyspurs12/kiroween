@@ -59,6 +59,14 @@ SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 SEVERITY_INFO = "info"
 
+# severity -> classification for finding kinds whose meaning follows their
+# severity (semantic layer, project findings)
+_SEVERITY_CLASSIFICATION = {
+    SEVERITY_ERROR: CLASS_VIOLATION,
+    SEVERITY_WARNING: CLASS_RISK,
+    SEVERITY_INFO: CLASS_NOTE,
+}
+
 LAYER_PREFLIGHT = "Preflight"
 LAYER_LEXICAL = "Lexical"
 LAYER_GRAMMAR = "Grammar"

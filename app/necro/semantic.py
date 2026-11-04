@@ -39,7 +39,8 @@ from typing import Dict, List, Optional
 
 from .diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_VIOLATION,
                           Diagnostic, LAYER_SEMANTIC,
-                          SEVERITY_ERROR, SEVERITY_INFO, SEVERITY_WARNING)
+                          SEVERITY_ERROR, SEVERITY_INFO, SEVERITY_WARNING,
+                          _SEVERITY_CLASSIFICATION)
 
 # ---- stable semantic diagnostic codes ([EXT]) ---------------------------
 SEM_DIVISOR_ZERO = "SEM_DIVISOR_ZERO"                # literal 0 divisor
@@ -267,13 +268,6 @@ def _describe(item: dict) -> str:
 # =========================================================================
 # risk records (classification) and their explanation (rendering)
 # =========================================================================
-
-_SEVERITY_CLASSIFICATION = {
-    SEVERITY_ERROR: CLASS_VIOLATION,
-    SEVERITY_WARNING: CLASS_RISK,
-    SEVERITY_INFO: CLASS_NOTE,
-}
-
 
 @dataclass
 class Risk:

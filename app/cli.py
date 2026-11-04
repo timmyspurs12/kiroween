@@ -63,7 +63,53 @@ def main(argv=None) -> int:
     a.add_argument("files", nargs="+", help=".cbl/.cob files to analyze")
     a.add_argument("--json", action="store_true",
                    help="emit the full structured analysis envelope per file")
+
+    pj = sub.add_parser("project", help="multi-file project analysis")
+    psub = pj.add_subparsers(dest="pcmd", required=True)
+    pa = psub.add_parser("analyze", help="analyze a directory of COBOL sources")
+    pa.add_argument("root", help="project directory (.cbl/.cob/.cpy)")
+    pa.add_argument("--json", action="store_true",
+                    help="emit the full structured project envelope")
+
     args = ap.parse_args(argv)
+
+    if args.cmd == "project":
+        from pathlib import Path as _P
+        root = _P(args.root)
+        if not root.is_dir():
+            print(f"necrospec: not a directory: {args.root}", file=sys.stderr)
+            return 2
+        from necro.project import analyze_project, ingest_directory
+        name, entries = ingest_directory(str(root))
+        result = analyze_project(name, entries)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            cov = result["coverage"]
+            print(f"\nproject {name}  —  {cov['files_indexed']} file(s) "
+                  f"({result['summary']['programs']} program(s), "
+                  f"{result['summary']['copybooks']} "
+                  f"copybook(s)), {cov['files_skipped']} skipped")
+            print(f"  dependencies: {cov['dependencies_total']} total · "
+                  f"{cov['dependencies_resolved']} resolved · "
+                  f"{cov['dependencies_unresolved']} unresolved · "
+                  f"{cov['dependencies_ambiguous']} ambiguous · "
+                  f"{cov['cycles']} cycle(s)")
+            print(f"  per-file: {cov['files_analyzed']} analyzed, "
+                  f"{cov['files_rejected']} rejected (see per-file reasons)")
+            print(f"  verdict: {'OK' if result['summary']['ok'] else 'FINDINGS'}"
+                  f" · {result['summary']['errors']} error(s), "
+                  f"{result['summary']['warnings']} warning(s), "
+                  f"{result['summary']['infos']} info")
+            for d in result["findings"]:
+                where = (d.get("detail") or {}).get("file") or "project"
+                at = f"L{d['line']}" if d["line"] else "-"
+                print(f"    [{d['severity']:7}] {d['code']} ({d['classification']}) "
+                      f"{where}:{at} [{d['finding_id']}]")
+                print(f"        {d['message']}")
+            print("  model limits: " + ", ".join(
+                a2["id"] for a2 in result["assumptions"]))
+        return 1 if result["summary"]["errors"] else 0
 
     violations = 0
     for path in args.files:
