@@ -86,11 +86,18 @@ DESIGN.md             design evidence: skills, tokens, UX decisions, review
   claims of execution or differential equivalence are out of scope.
 - Fixed-format frame rules are strict: content past column 72, TAB, CR, NUL,
   bytes ≥ 0x80, and indicator values other than space/`*`/`/` are rejected.
+- The editor is a purpose-built textarea with an overlay highlight (Tab
+  inserts a 4-space indent, Enter auto-indents, Escape releases focus) — no
+  find/replace, multi-cursor, or bracket matching. A heavyweight editor
+  dependency was evaluated and deliberately not added for this milestone.
 - `frontend/node_modules/` is not persisted in this workspace; run
   `npm install` before rebuilding the frontend. `app/web_dist/` is committed
   so the product runs without Node.
 - Visual review of this build was performed at the code and HTTP level only
-  (see DESIGN.md §6 — no browser/screenshot tooling exists in the sandbox).
+  (see DESIGN.md §6 — browser/screenshot tooling was re-evaluated at the
+  post-build quality gate and remains unobtainable: no local browser, apt
+  mirrors HTTP-blocked, Playwright CDN download fails, GitHub release-asset
+  redirect host unreachable).
 
 ## Provenance
 

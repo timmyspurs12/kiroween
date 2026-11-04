@@ -65,10 +65,17 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json({"error": {"code": code, "message": message}}, status)
 
     def _serve_static(self, path):
-        # resolve inside WEB_DIST only
+        # resolve inside WEB_DIST only; containment must hold for the
+        # *resolved* path (normpath applied), not a raw string prefix —
+        # siblings like web_dist_evil share the web root's string prefix.
         rel = path.lstrip("/") or "index.html"
         full = os.path.normpath(os.path.join(WEB_DIST, rel))
-        if not full.startswith(WEB_DIST):
+        root = os.path.normpath(WEB_DIST)
+        try:
+            contained = os.path.commonpath([root, full]) == root
+        except ValueError:
+            contained = False
+        if not contained:
             self._send_error_json(403, "FORBIDDEN", "path escapes web root")
             return
         if not os.path.isfile(full):

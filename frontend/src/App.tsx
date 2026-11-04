@@ -52,7 +52,7 @@ export default function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [engineFailure, setEngineFailure] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
-  const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [caret, setCaret] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
   const [railOpen, setRailOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -101,7 +101,7 @@ export default function App() {
     setAnalysis(null);
     setAnalyzedSource(null);
     setEngineFailure(null);
-    setActiveLine(null);
+    setCaret({ line: 1, col: 1 });
     setRailOpen(false);
   }, []);
 
@@ -110,7 +110,7 @@ export default function App() {
     setAnalysis(null);
     setAnalyzedSource(null);
     setEngineFailure(null);
-    setActiveLine(null);
+    setCaret({ line: 1, col: 1 });
     setRailOpen(false);
   }, []);
 
@@ -198,7 +198,7 @@ export default function App() {
   );
 
   const jumpToLine = useCallback((line: number | null, col?: number | null) => {
-    setActiveLine(line);
+    if (line !== null) setCaret({ line, col: col ?? 1 });
     if (line !== null) {
       // select the token/word under (line, col) inside the textarea
       const ta = document.querySelector<HTMLTextAreaElement>(".code-input");
@@ -282,9 +282,9 @@ export default function App() {
               source={active.source}
               analyzed={analyzed}
               analysis={analysis}
-              activeLine={activeLine}
+              activeLine={caret.line}
               onChange={updateSource}
-              onCaretLine={setActiveLine}
+              onCaret={(line, col) => setCaret({ line, col })}
             />
           ) : (
             <div className="editor-empty">
@@ -341,6 +341,7 @@ export default function App() {
         dirty={dirty}
         analyzing={analyzing}
         engineFailure={engineFailure}
+        caret={caret}
       />
       {pasteOpen && (
         <PasteDialog onCancel={() => setPasteOpen(false)} onSubmit={addPasted} />

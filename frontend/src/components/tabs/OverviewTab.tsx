@@ -42,10 +42,8 @@ function SymbolCard({ sym, depth = 0 }: { sym: SymbolRow; depth?: number }) {
 
 export function OverviewTab({
   analysis,
-  source,
 }: {
   analysis: AnalysisResponse;
-  source: string | null;
 }) {
   const s = analysis.summary;
   const idDiv = analysis.ast?.identification_division as
@@ -147,7 +145,6 @@ export function OverviewTab({
               }
             </dd>
           </dl>
-          {source == null && null}
         </div>
       )}
     </div>

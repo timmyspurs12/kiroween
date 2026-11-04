@@ -8,8 +8,9 @@ export function StatusBar(props: {
   dirty: boolean;
   analyzing: boolean;
   engineFailure: string | null;
+  caret: { line: number; col: number };
 }) {
-  const { health, active, analysis, dirty, analyzing, engineFailure } = props;
+  const { health, active, analysis, dirty, analyzing, engineFailure, caret } = props;
   return (
     <footer className="statusbar">
       <span className="sb-item">
@@ -28,6 +29,9 @@ export function StatusBar(props: {
         <>
           <span className="sb-item">
             <span className="sb-strong">{active.filename}</span>
+          </span>
+          <span className="sb-item">
+            Ln {caret.line}, Col {caret.col}
           </span>
           <span className="sb-item">
             {analysis ? `${analysis.meta.bytes} B · ${analysis.meta.lines} lines` : `${active.source.length} B (unedited count)`}

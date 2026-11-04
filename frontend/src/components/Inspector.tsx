@@ -77,7 +77,7 @@ export function Inspector(props: {
             )}
           </div>
         ) : tab === "overview" ? (
-          <OverviewTab analysis={analysis} source={props.source} />
+          <OverviewTab analysis={analysis} />
         ) : tab === "diagnostics" ? (
           <DiagnosticsTab analysis={analysis} onJump={props.onJump} />
         ) : tab === "tokens" ? (

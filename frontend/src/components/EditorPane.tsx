@@ -23,7 +23,7 @@ export function EditorPane(props: {
   analysis: AnalysisResponse | null;
   activeLine: number | null;
   onChange: (src: string) => void;
-  onCaretLine: (line: number) => void;
+  onCaret: (line: number, col: number) => void;
 }) {
   const { source, analysis, analyzed, activeLine } = props;
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -66,8 +66,38 @@ export function EditorPane(props: {
     if (!ta) return;
     const upto = ta.value.slice(0, ta.selectionStart);
     const line = upto.split("\n").length;
+    const lastNl = upto.lastIndexOf("\n");
+    const col = ta.selectionStart - lastNl;
     setCaretLine(line);
-    props.onCaretLine(line);
+    props.onCaret(line, col);
+  };
+
+  // Lightweight editing affordances (no editor dependency): Tab inserts a
+  // 4-space indent, Enter keeps the current line's indentation, Escape
+  // releases focus so keyboard users can tab out of the editor.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const { selectionStart: s, selectionEnd: en, value } = ta;
+      const next = value.slice(0, s) + "    " + value.slice(en);
+      props.onChange(next);
+      requestAnimationFrame(() => ta.setSelectionRange(s + 4, s + 4));
+    } else if (e.key === "Enter") {
+      const s = ta.selectionStart;
+      const value = ta.value;
+      if (s !== ta.selectionEnd) return; // leave replacement behavior alone
+      const lineStart = value.lastIndexOf("\n", s - 1) + 1;
+      const indent = (value.slice(lineStart, s).match(/^ */) ?? [""])[0];
+      if (indent.length === 0) return;
+      e.preventDefault();
+      const ins = "\n" + indent;
+      const next = value.slice(0, s) + ins + value.slice(s);
+      props.onChange(next);
+      requestAnimationFrame(() => ta.setSelectionRange(s + ins.length, s + ins.length));
+    } else if (e.key === "Escape") {
+      ta.blur();
+    }
   };
 
   useEffect(() => {
@@ -205,6 +235,7 @@ export function EditorPane(props: {
               className="code-input"
               value={source}
               onChange={(e) => props.onChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               onScroll={syncScroll}
               onKeyUp={updateCaret}
               onClick={updateCaret}

@@ -117,7 +117,9 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
 - `role="tablist"/tab/tabpanel`, `aria-selected`, `aria-live="polite"` toast
   region, `role="status"` pill, `role="alert"` on engine-unreachable.
 - Visible `:focus-visible` ring (2 px accent) on every interactive element;
-  Escape closes dialog/drawers; Analyze is keyboard-first (`Ctrl/Cmd+Enter`).
+  Escape closes dialog/drawers (and releases editor focus so keyboard users
+  can tab out); Analyze is keyboard-first (`Ctrl/Cmd+Enter`). The editor
+  inserts a 4-space indent on Tab and auto-indents on Enter.
 - Responsive: rail + inspector become slide-in drawers under 980 px; editor
   always dominant; zone legend drops first.
 - Reduced-motion honored globally.
@@ -134,10 +136,23 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   the UI performs (samples → analyze → render fields) executed against the
   real API for clean, rejected, and [EXT] fixtures, including context lines
   and hints.
+- **Re-checked at the post-build quality gate:** browser tooling was re-eval
+  uated for availability without destabilizing the environment. Result —
+  genuinely unobtainable, with evidence: no browser binaries in the sandbox;
+  `pip install playwright` succeeds (PyPI) but `playwright install` fails at
+  the CDN (HTTP blocked); `apt-get update` fails on Debian mirrors
+  (151.101.x.x, same as the Env-0 finding); GitHub release assets redirect to
+  `release-assets.githubusercontent.com`, which is unreachable. TCP-level
+  probes to those hosts appear to "connect" but the HTTP layer fails — an
+  interception false-positive, recorded here so it is not misread later.
+  **No screenshots exist and none are claimed.** External inspection: run
+  `python3 app/server.py` (or use the platform preview on port 8747), load a
+  corpus fixture, press Analyze, then check Overview / Diagnostics (click a
+  diagnostic — the editor selects the offending token) / Tokens / AST tabs;
+  narrow the viewport under 980 px to see the drawer layout.
 - **Not performed:** browser rendering, screenshots, click-through/visual
-  regression. **No browser or screenshot tooling exists in this sandbox**
-  (verified: no chromium/chrome/playwright binaries or packages). Any visual
-  claim beyond the code/HTTP review above is therefore not made.
+  regression. Any visual claim beyond the code/HTTP review above is
+  therefore not made.
 
 ## 7. Skill credit
 

@@ -115,3 +115,57 @@ def test_path_traversal_blocked():
             assert "ThreadingHTTPServer" not in body, "path traversal leak!"
     except urllib.error.HTTPError:
         pass  # 4xx/5xx is fine — content must never leak
+
+
+def test_sibling_prefix_directory_blocked():
+    """A sibling directory whose name shares the web root's string prefix
+    (app/web_dist_evil) must NOT be served by the string-prefix check that
+    existed before the containment fix."""
+    evil = APP / "web_dist_evil"
+    marker = "TOP-SECRET-SIBLING-PAYLOAD"
+    evil.mkdir(exist_ok=True)
+    (evil / "secret.html").write_text(marker)
+    try:
+        for target in ("/../web_dist_evil/secret.html",
+                       "/..%2Fweb_dist_evil%2Fsecret.html"):
+            try:
+                with urllib.request.urlopen(_base + target, timeout=5) as res:
+                    body = res.read().decode()
+                    assert marker not in body, f"sibling leak via {target}!"
+            except urllib.error.HTTPError:
+                pass  # 403/404 — blocked, acceptable
+    finally:
+        (evil / "secret.html").unlink()
+        evil.rmdir()
+
+
+def test_dot_segments_and_encoded_traversal_blocked():
+    marker = "ThreadingHTTPServer"
+    server_file = APP / "server.py"
+    assert marker in server_file.read_text()
+    for target in ("/../server.py",
+                   "/..%2Fserver.py",
+                   "/%2e%2e/server.py",
+                   "/..//server.py",
+                   "/../../server.py"):
+        try:
+            with urllib.request.urlopen(_base + target, timeout=5) as res:
+                body = res.read().decode()
+                assert marker not in body, f"source leak via {target}!"
+        except urllib.error.HTTPError:
+            pass
+
+
+def test_legitimate_static_asset_still_served():
+    index = APP / "web_dist" / "index.html"
+    asset_match = None
+    for line in index.read_text().splitlines():
+        if "assets/index-" in line and ".js" in line:
+            asset_match = line
+            break
+    assert asset_match, "built asset reference not found in index.html"
+    asset = "assets/" + asset_match.split("assets/")[1].split('"')[0]
+    with urllib.request.urlopen(_base + "/" + asset, timeout=5) as res:
+        body = res.read().decode()
+        assert res.status == 200
+        assert "NecroSpec" in body or "root" in body  # real bundle content
