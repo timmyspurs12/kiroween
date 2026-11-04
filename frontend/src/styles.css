@@ -914,6 +914,64 @@ button {
 }
 
 /* diagnostics */
+.diag-filters {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--edge);
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 1;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-mute);
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--surface-2);
+  transition:
+    color var(--t-fast),
+    border-color var(--t-fast),
+    background var(--t-fast);
+}
+
+.filter-chip:hover {
+  color: var(--text-hi);
+  border-color: var(--edge-strong);
+}
+
+.filter-chip.active {
+  color: var(--text-hi);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.filter-chip .fc-count {
+  font-family: var(--font-mono);
+  opacity: 0.8;
+}
+
+.diag-evidence {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+  line-height: 1.45;
+}
+
+.diag-evidence .hint-label {
+  color: var(--state-info);
+  font-weight: 600;
+}
+
 .diag-row {
   display: block;
   width: 100%;
@@ -1063,6 +1121,166 @@ button {
 
 .tok-table tr.selected td {
   background: var(--accent-dim);
+}
+
+/* data dictionary + references */
+.view-note {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--edge);
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  line-height: 1.45;
+}
+
+.ov-note {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+.dd-tree {
+  padding: var(--sp-2) 0 var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.dd-group {
+  margin-bottom: var(--sp-2);
+}
+
+.dd-section {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px var(--sp-3);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--tok-level);
+  border-bottom: 1px solid var(--edge);
+}
+
+.dd-section:hover {
+  background: var(--surface-2);
+}
+
+.dd-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 2.5px var(--sp-3);
+  border-left: 2px solid transparent;
+}
+
+.dd-row:hover {
+  background: var(--surface-2);
+}
+
+.dd-caret {
+  flex: none;
+  width: 12px;
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  text-align: center;
+}
+
+.dd-name {
+  color: var(--text-hi);
+  font-weight: 600;
+}
+
+.dd-meta {
+  color: var(--text-faint);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-numbers {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  gap: 8px;
+  color: var(--tok-number);
+}
+
+.dd-numbers .dd-signed {
+  color: var(--tok-keyword);
+  font-weight: 700;
+}
+
+.ref-group {
+  border-bottom: 1px solid var(--edge);
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.ref-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  flex-wrap: wrap;
+}
+
+.ref-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-m);
+  font-weight: 700;
+  color: var(--text-hi);
+}
+
+.ref-decl {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--accent);
+  border-bottom: 1px dotted var(--edge-strong);
+}
+
+.ref-decl:hover {
+  color: var(--accent-hi);
+}
+
+.ref-undecl {
+  font-size: var(--fs-2xs);
+  color: var(--state-error);
+}
+
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+}
+
+.ref-table th {
+  text-align: left;
+  color: var(--text-faint);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 2px var(--sp-3);
+  border-bottom: 1px solid var(--edge);
+}
+
+.ref-table td {
+  padding: 2.5px var(--sp-3);
+  color: var(--text-mute);
+}
+
+.ref-table tr {
+  cursor: pointer;
+}
+
+.ref-table tr:hover td {
+  background: var(--surface-2);
+  color: var(--text-hi);
+}
+
+.ref-loc {
+  color: var(--text);
 }
 
 /* AST tree */

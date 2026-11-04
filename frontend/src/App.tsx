@@ -14,7 +14,7 @@ import { Inspector } from "./components/Inspector";
 import { StatusBar } from "./components/StatusBar";
 import { PasteDialog } from "./components/PasteDialog";
 
-export type TabId = "overview" | "diagnostics" | "tokens" | "ast";
+export type TabId = "overview" | "data" | "references" | "diagnostics" | "tokens" | "ast";
 
 export interface SessionFile {
   id: string;

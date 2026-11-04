@@ -240,6 +240,26 @@ SAMPLES = [
         "expect_ok": False,
         "source": '       IDENTIFICATION DIVISION.\n       PROGRAM-ID. EXTGROUPTGT.\n       DATA DIVISION.\n       LINKAGE SECTION.\n       01  LK-IO.\n           05  LK-AMOUNT    PIC S9(5)V99  COMP-3.\n       PROCEDURE DIVISION USING LK-IO.\n           COMPUTE LK-IO = 1\n           GOBACK.',
     },
+    {
+        "id": 'EXT-MOVE-SPACES',
+        "filename": 'EXT_MOVE_SPACES.cbl',
+        "title": "[EXT] EXT_MOVE_SPACES.cbl",
+        "origin": "[EXT] agent-engineered extension — not part of the corpus",
+        "description": 'Semantic [EXT]: MOVE SPACES into a numeric item stores non-numeric display characters.',
+        "note": "engineered",
+        "expect_ok": True,
+        "source": '       IDENTIFICATION DIVISION.\n       PROGRAM-ID. EXTMOVSPC.\n       DATA DIVISION.\n       LINKAGE SECTION.\n       01  LK-IO.\n           05  LK-FLAG      PIC 9.\n       PROCEDURE DIVISION USING LK-IO.\n           MOVE SPACES TO LK-FLAG\n           GOBACK.',
+    },
+    {
+        "id": 'EXT-DIVZERO',
+        "filename": 'EXT_DIVZERO.cbl',
+        "title": "[EXT] EXT_DIVZERO.cbl",
+        "origin": "[EXT] agent-engineered extension — not part of the corpus",
+        "description": 'Semantic [EXT]: COMPUTE divides by the literal 0 — definite run-time failure on this path.',
+        "note": "engineered",
+        "expect_ok": False,
+        "source": '       IDENTIFICATION DIVISION.\n       PROGRAM-ID. EXTDIVZERO.\n       DATA DIVISION.\n       LINKAGE SECTION.\n       01  LK-IO.\n           05  LK-A         PIC S9(5)V99  COMP-3.\n           05  LK-Q         PIC S9(5)V99  COMP-3.\n       PROCEDURE DIVISION USING LK-IO.\n           COMPUTE LK-Q = LK-A / 0\n           GOBACK.',
+    },
 ]
 
 SAMPLES_BY_ID = {s["id"]: s for s in SAMPLES}

@@ -141,6 +141,42 @@ EXT_NEGATIVES = [
         ).rstrip("\n"),
         "expect_layer": "AST",
     },
+    {
+        "id": "EXT-MOVE-SPACES",
+        "filename": "EXT_MOVE_SPACES.cbl",
+        "description": "Semantic [EXT]: MOVE SPACES into a numeric item stores non-numeric display characters.",
+        "source": (
+            "       IDENTIFICATION DIVISION.\n"
+            "       PROGRAM-ID. EXTMOVSPC.\n"
+            "       DATA DIVISION.\n"
+            "       LINKAGE SECTION.\n"
+            "       01  LK-IO.\n"
+            "           05  LK-FLAG      PIC 9.\n"
+            "       PROCEDURE DIVISION USING LK-IO.\n"
+            "           MOVE SPACES TO LK-FLAG\n"
+            "           GOBACK.\n"
+        ).rstrip("\n"),
+        "expect_layer": "Semantic (warning)",
+        "expect_ok": True,
+    },
+    {
+        "id": "EXT-DIVZERO",
+        "filename": "EXT_DIVZERO.cbl",
+        "description": "Semantic [EXT]: COMPUTE divides by the literal 0 — definite run-time failure on this path.",
+        "source": (
+            "       IDENTIFICATION DIVISION.\n"
+            "       PROGRAM-ID. EXTDIVZERO.\n"
+            "       DATA DIVISION.\n"
+            "       LINKAGE SECTION.\n"
+            "       01  LK-IO.\n"
+            "           05  LK-A         PIC S9(5)V99  COMP-3.\n"
+            "           05  LK-Q         PIC S9(5)V99  COMP-3.\n"
+            "       PROCEDURE DIVISION USING LK-IO.\n"
+            "           COMPUTE LK-Q = LK-A / 0\n"
+            "           GOBACK.\n"
+        ).rstrip("\n"),
+        "expect_layer": "Semantic",
+    },
 ]
 
 
@@ -186,7 +222,7 @@ for e in EXT_NEGATIVES:
     A('        "origin": "[EXT] agent-engineered extension — not part of the corpus",')
     A(f'        "description": {e["description"]!r},')
     A('        "note": "engineered",')
-    A('        "expect_ok": False,')
+    A(f'        "expect_ok": {e.get("expect_ok", False)},')
     A(f'        "source": {pystr(e["source"])},')
     A("    },")
 A(']')

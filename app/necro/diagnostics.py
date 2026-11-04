@@ -36,6 +36,16 @@ ERR_UNDECLARED_IDENT = "ERR_UNDECLARED_IDENT"
 ERR_NON_ELEMENTARY_TARGET = "ERR_NON_ELEMENTARY_TARGET"
 ERR_LEVEL_STRUCTURE = "ERR_LEVEL_STRUCTURE"          # [EXT] impossible level nesting
 
+# ---- Layer 5: Semantic analysis (Milestone 2; agent layer [EXT]) --------
+SEM_DIVISOR_ZERO = "SEM_DIVISOR_ZERO"                # [EXT] literal 0 divisor
+SEM_MOVE_SPACES_TO_NUMERIC = "SEM_MOVE_SPACES_TO_NUMERIC"  # [EXT] SPACES -> numeric
+SEM_TRUNCATION_HIGH = "SEM_TRUNCATION_HIGH"          # [EXT] high-order digits lost
+SEM_PRECISION_LOSS = "SEM_PRECISION_LOSS"            # [EXT] low-order digits lost
+SEM_SIGN_DISCARD = "SEM_SIGN_DISCARD"                # [EXT] unsigned receiver, signed result
+SEM_SIZE_ERROR_GUARD = "SEM_SIZE_ERROR_GUARD"        # [EXT] overflow guarded (info)
+
+LAYER_SEMANTIC = "Semantic"
+
 SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 SEVERITY_INFO = "info"
@@ -63,6 +73,12 @@ HINTS = {
     ERR_PIC_REQUIRED: "Elementary items (level 77 or leaves) require a PIC clause.",
     ERR_UNDECLARED_IDENT: "Reference a name declared in WORKING-STORAGE or LINKAGE.",
     ERR_NON_ELEMENTARY_TARGET: "Statements operate on elementary items, not group items.",
+    SEM_DIVISOR_ZERO: "Guard the divisor (IF second = 0 …) or restructure the statement; division by zero aborts the program at run time.",
+    SEM_MOVE_SPACES_TO_NUMERIC: "Move numeric data (for example ZERO) or review the receiver's category; later arithmetic on this field would read invalid data.",
+    SEM_TRUNCATION_HIGH: "Compare the sender's capacity with the receiver's PICTURE; enlarge the receiver or confirm the loss of high-order digits is intended.",
+    SEM_PRECISION_LOSS: "Align the fractional PICTURE digits, or add ROUNDED if truncation is not intended.",
+    SEM_SIGN_DISCARD: "Give the receiver an S PICTURE (with an allowed sign clause) or confirm the program never produces a negative result here.",
+    SEM_SIZE_ERROR_GUARD: "No action required for capacity here; note that the guard changes control flow on overflow, which matters for migration testing.",
     ERR_LEVEL_STRUCTURE: "Check the level-number nesting of the Data Division.",
 }
 
@@ -77,6 +93,7 @@ class Diagnostic:
     layer: str = LAYER_PREFLIGHT
     hint: Optional[str] = None
     context_line: Optional[str] = None
+    evidence: Optional[str] = None
 
     def __post_init__(self):
         if self.hint is None:

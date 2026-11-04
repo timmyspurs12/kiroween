@@ -1,8 +1,16 @@
 # NecroSpec
 
-A static-analysis workstation for the **frozen Rev6.4.2 COBOL subset** — a real
-four-layer compiler-grade engine (preflight → lexer → recursive-descent parser
-→ semantic AST) with a premium dark-first engineering frontend.
+A static-analysis and migration-preparation workstation for the **frozen
+Rev6.4.2 COBOL subset** — a five-layer compiler-grade engine (preflight →
+lexer → recursive-descent parser → semantic AST → **semantic analysis**) with
+a premium dark-first engineering frontend.
+
+Milestone 2 adds a semantic layer: a data dictionary (categories, storage
+lengths, precision, hierarchy), an identifier reference index, and
+capacity/precision findings — potential high-order truncation, fractional
+precision loss, discarded signs, SPACES moved into numeric items, and literal
+zero divisors — each with a computed evidence trail grounded in the declared
+PICTUREs and literal values.
 
 Everything in this repository runs locally with **zero third-party runtime
 dependencies**: the API server is Python 3 stdlib; the frontend is a static
@@ -34,13 +42,15 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 34 tests: fixture-corpus behavior, per-layer rejections, preflight
-# positions, PIC expansion, symbol semantics, sign rules, envelope shape,
-# determinism, HTTP API contract, static serving, path-traversal guard
+# 63 tests: fixture-corpus behavior, per-layer rejections, preflight
+# positions, PIC expansion, symbol semantics, sign rules, data dictionary
+# (validated against the corpus byte annotations), references, MOVE and
+# arithmetic capacity findings, zero-divisor detection, determinism,
+# envelope shape, HTTP API contract, static serving, path-traversal guard
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**34 passed in ~0.7 s**.
+**63 passed in ~1.2 s**.
 
 ## API
 
@@ -80,10 +90,18 @@ DESIGN.md             design evidence: skills, tokens, UX decisions, review
 - The supported language is the **frozen subset only** (see `IDENTIFICATION/
   DATA/PROCEDURE DIVISION` grammar in `spike_evidence/spec/rev4_extract.md`):
   no paragraphs/sections, no PERFORM, no file I/O, no PICTURE editing strings
-  beyond `S?9(n)?[V9(n)?]` / `S?V9(n)?`, no COPY, no nested programs.
+  beyond `S?9(n)?[V9(n)?]` / `S?V9(n)?` (consequently there are no
+  alphanumeric elementary PICTUREs such as `X`; group items are recorded as
+  "group (alphanumeric)" but the grammar already rejects their use as
+  operands), no COPY, no nested programs.
 - The engine performs static structural/semantic validation only. It does not
   execute programs, compute decimal results, or produce runtime artifacts;
   claims of execution or differential equivalence are out of scope.
+- Semantic analysis is static capacity reasoning only: DIVIDE-derived
+  precision is deliberately reported as not established, findings are
+  possibilities (warnings) rather than proof of misbehavior, and a clean
+  report does **not** mean a program is safe to migrate. No execution, no
+  GnuCOBOL parity, no transpilation.
 - Fixed-format frame rules are strict: content past column 72, TAB, CR, NUL,
   bytes ≥ 0x80, and indicator values other than space/`*`/`/` are rejected.
 - The editor is a purpose-built textarea with an overlay highlight (Tab

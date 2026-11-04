@@ -24,11 +24,14 @@ def codes(result):
 # ---------------------------------------------------------------------------
 
 def test_every_positive_fixture_parses_clean():
+    # Milestone 2: positives may carry semantic WARNINGS (truncation,
+    # precision, sign-discard are possibilities, not rejections); the
+    # product guarantee is zero ERRORS, i.e. accepted by the subset.
     for s in POSITIVE_SAMPLES:
         r = analyze(s["source"], s["filename"])
         assert r["summary"]["ok"], f"{s['id']}: expected clean, got {codes(r)}"
         assert r["summary"]["failed_layer"] is None
-        assert r["diagnostics"] == []
+        assert not [d for d in r["diagnostics"] if d["severity"] == "error"]
 
 
 def test_every_negative_fixture_is_rejected():
@@ -52,6 +55,7 @@ def test_negative_fixture_layers():
         "EXT-DUPSYM": "AST",
         "EXT-UNDECL": "AST",
         "EXT-GROUPTGT": "AST",
+        "EXT-DIVZERO": "Semantic",
     }
     for s in NEGATIVE_SAMPLES:
         r = analyze(s["source"], s["filename"])
@@ -334,7 +338,14 @@ def test_sign_separate_rules():
 
 def test_envelope_shape():
     r = analyze(SAMPLES[0]["source"], SAMPLES[0]["filename"])
-    assert set(r.keys()) == {"meta", "layers", "diagnostics", "tokens", "ast", "summary"}
+    # Milestone 2 adds symbols/references/semantic_counts (semantic products)
+    assert set(r.keys()) == {"meta", "layers", "diagnostics", "tokens", "ast",
+                             "symbols", "references", "semantic_counts",
+                             "summary"}
+    assert set(r["layers"][0].keys()) <= {"layer", "status", "diagnostics"}
+    for d in r["diagnostics"]:
+        assert set(d.keys()) == {"severity", "code", "message", "line", "col",
+                                 "layer", "hint", "context_line", "evidence"}
     assert set(r["meta"].keys()) == {"name", "bytes", "lines", "columns_per_line"}
     assert set(r["summary"].keys()) == {
         "ok", "errors", "warnings", "infos", "token_count",
@@ -346,14 +357,23 @@ def test_envelope_shape():
 
 
 def test_layer_stop_at_first_failure():
-    # invalid frame must short-circuit: no tokens, no ast
+    # invalid frame must short-circuit: no tokens, no ast, no semantic products
     r = analyze("      -01  BADIND           PIC 9.\n", "BADIND.cbl")
     assert r["tokens"] == []
     assert r["ast"] is None
+    assert r["symbols"] is None and r["references"] is None
     statuses = [l["status"] for l in r["layers"]]
     passed = statuses.count("passed")
     assert statuses[passed] == "failed"
     assert all(s == "skipped" for s in statuses[passed + 1:])
+
+
+def test_semantic_layer_skipped_when_ast_fails():
+    r = analyze(SAMPLES[16]["source"], SAMPLES[16]["filename"])  # NEG_PIC19 (AST)
+    assert r["summary"]["failed_layer"] == "AST"
+    assert [l["status"] for l in r["layers"]] == [
+        "passed", "passed", "passed", "failed", "skipped"]
+    assert r["symbols"] is None
 
 
 def test_diagnostics_are_deterministic():

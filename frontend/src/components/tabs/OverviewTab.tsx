@@ -1,6 +1,6 @@
 import { AnalysisResponse, SymbolRow } from "../../api";
 
-const STAGES = ["Preflight", "Lexical", "Grammar", "AST"];
+const STAGES = ["Preflight", "Lexical", "Grammar", "AST", "Semantic"];
 
 function SymbolCard({ sym, depth = 0 }: { sym: SymbolRow; depth?: number }) {
   const pic =
@@ -55,6 +55,10 @@ export function OverviewTab({
   const procDiv = analysis.ast?.procedure_division as
     | { sentences?: unknown[]; using?: string[] }
     | undefined;
+
+  const counts = analysis.semantic_counts;
+  const sev = { error: 0, warning: 0, info: 0 };
+  for (const d of analysis.diagnostics) sev[d.severity] += 1;
 
   return (
     <div>
@@ -126,6 +130,41 @@ export function OverviewTab({
           {symbols.working_storage.map((sym) => (
             <SymbolCard key={`ws-${sym.name}-${sym.line}`} sym={sym} />
           ))}
+        </div>
+      )}
+
+      {counts && (
+        <div className="ov-section">
+          <h3>SEMANTIC ANALYSIS</h3>
+          <dl className="ov-kv">
+            <dt>Data items</dt>
+            <dd>{counts.data_items}</dd>
+            <dt>Declared identifiers</dt>
+            <dd>{counts.declared_identifiers}</dd>
+            <dt>Identifier references</dt>
+            <dd>{counts.references} (all resolved)</dd>
+            <dt>Findings</dt>
+            <dd>
+              <span style={{ color: sev.error ? "var(--state-error)" : undefined }}>
+                {sev.error} error{sev.error === 1 ? "" : "s"}
+              </span>
+              {" · "}
+              <span style={{ color: sev.warning ? "var(--state-warning)" : undefined }}>
+                {sev.warning} warning{sev.warning === 1 ? "" : "s"}
+              </span>
+              {" · "}
+              <span style={{ color: sev.info ? "var(--state-info)" : undefined }}>
+                {sev.info} info
+              </span>
+            </dd>
+          </dl>
+          {sev.warning > 0 && (
+            <p className="ov-note">
+              Warnings are possibilities established from declared PICTUREs
+              and literal values (capacity, precision, sign) — not program
+              failures. See the Diagnostics tab for the evidence behind each.
+            </p>
+          )}
         </div>
       )}
 

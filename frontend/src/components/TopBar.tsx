@@ -1,7 +1,7 @@
 import { AnalysisResponse, HealthInfo } from "../api";
 import { ActiveSource } from "../App";
 
-const STAGES = ["Preflight", "Lexical", "Grammar", "AST"];
+const STAGES = ["Preflight", "Lexical", "Grammar", "AST", "Semantic"];
 
 export function TopBar(props: {
   active: ActiveSource | null;

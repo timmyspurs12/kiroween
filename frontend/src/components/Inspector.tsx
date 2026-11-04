@@ -1,12 +1,16 @@
 import { AnalysisResponse } from "../api";
 import { TabId } from "../App";
 import { OverviewTab } from "./tabs/OverviewTab";
+import { DataTab } from "./tabs/DataTab";
+import { ReferencesTab } from "./tabs/ReferencesTab";
 import { DiagnosticsTab } from "./tabs/DiagnosticsTab";
 import { TokensTab } from "./tabs/TokensTab";
 import { AstTab } from "./tabs/AstTab";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "data", label: "Data" },
+  { id: "references", label: "Refs" },
   { id: "diagnostics", label: "Diagnostics" },
   { id: "tokens", label: "Tokens" },
   { id: "ast", label: "AST" },
@@ -78,6 +82,10 @@ export function Inspector(props: {
           </div>
         ) : tab === "overview" ? (
           <OverviewTab analysis={analysis} />
+        ) : tab === "data" ? (
+          <DataTab analysis={analysis} onJump={props.onJump} />
+        ) : tab === "references" ? (
+          <ReferencesTab analysis={analysis} onJump={props.onJump} />
         ) : tab === "diagnostics" ? (
           <DiagnosticsTab analysis={analysis} onJump={props.onJump} />
         ) : tab === "tokens" ? (

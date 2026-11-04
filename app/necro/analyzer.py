@@ -9,6 +9,7 @@ from typing import List
 from . import preflight, lexer, grammar, ast_build
 from .diagnostics import Diagnostic, LAYER_PREFLIGHT, LAYER_LEXICAL, \
     LAYER_GRAMMAR, LAYER_AST
+from . import semantic
 from .lexer import Token
 
 
@@ -30,27 +31,33 @@ def analyze(source: str, name: str = "<source>") -> dict:
     # Layer 1
     pre = preflight.run_preflight(source)
     if pre:
-        return _respond(meta, source, None, None, pre, 1)
+        return _respond(meta, source, None, None, pre, 1, None)
 
     # Layer 2
     tokens, lexDiags = lexer.tokenize(lines)
     if lexDiags:
-        return _respond(meta, source, tokens, None, lexDiags, 2)
+        return _respond(meta, source, tokens, None, lexDiags, 2, None)
 
     # Layer 3
     ast, gramDiags = grammar.parse(tokens)
     if gramDiags:
-        return _respond(meta, source, tokens, None, gramDiags, 3)
+        return _respond(meta, source, tokens, None, gramDiags, 3, None)
 
     # Layer 4
     ast, _symbols = ast_build.analyze_ast(ast, diags)
     astDiags = [d for d in diags]
-    return _respond(meta, source, tokens, ast, astDiags, 4)
+    if any(d.severity == "error" for d in astDiags):
+        return _respond(meta, source, tokens, ast, astDiags, 4, None)
+
+    # Layer 5 — semantic analysis (runs only on a structurally clean AST;
+    # its products ship even when it raises findings of its own)
+    products, semDiags = semantic.analyze(ast)
+    return _respond(meta, source, tokens, ast, semDiags, 5, products)
 
 
 def _respond(meta: dict, source, tokens: List[Token], ast, diags: List[Diagnostic],
-             failed_layer: int) -> dict:
-    layer_names = ["Preflight", "Lexical", "Grammar", "AST"]
+             failed_layer: int, products: dict | None) -> dict:
+    layer_names = ["Preflight", "Lexical", "Grammar", "AST", "Semantic"]
     layer_status = []
     for idx, lname in enumerate(layer_names, start=1):
         if idx < failed_layer:
@@ -96,5 +103,8 @@ def _respond(meta: dict, source, tokens: List[Token], ast, diags: List[Diagnosti
         "diagnostics": [d.to_json() for d in ordered],
         "tokens": [t.to_json() for t in (tokens or [])],
         "ast": ast,
+        "symbols": products.get("symbols") if products else None,
+        "references": products.get("references") if products else None,
+        "semantic_counts": products.get("counts") if products else None,
         "summary": summary,
     }

@@ -9,6 +9,44 @@ export interface Diagnostic {
   layer: string;
   hint: string | null;
   context_line: string | null;
+  evidence: string | null;
+}
+
+export interface SemanticSymbol {
+  name: string;
+  level: number;
+  section: string;
+  line: number;
+  col: number;
+  usage: string | null;
+  usage_label: string;
+  elementary: boolean;
+  category: string;
+  picture: string | null;
+  signed: boolean | null;
+  integer_digits: number | null;
+  fractional_digits: number | null;
+  digits: number | null;
+  byte_length: number | null;
+  sign: string | null;
+  value: string | null;
+  parent: string | null;
+  children: SemanticSymbol[];
+}
+
+export interface SemanticRef {
+  name: string;
+  resolved: string;
+  role: string;
+  statement: string;
+  line: number | null;
+  col: number | null;
+}
+
+export interface SemanticCounts {
+  data_items: number;
+  references: number;
+  declared_identifiers: number;
 }
 
 export interface Token {
@@ -56,6 +94,9 @@ export interface AnalysisResponse {
   diagnostics: Diagnostic[];
   tokens: Token[];
   ast: Record<string, unknown> | null;
+  symbols: SemanticSymbol[] | null;
+  references: SemanticRef[] | null;
+  semantic_counts: SemanticCounts | null;
   summary: {
     ok: boolean;
     errors: number;

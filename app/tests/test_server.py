@@ -59,7 +59,7 @@ def test_health():
 def test_samples_endpoint():
     status, body = get("/api/samples")
     assert status == 200
-    assert len(body["samples"]) == 23
+    assert len(body["samples"]) == 25
     fields = {"id", "filename", "title", "origin", "description", "note", "expect_ok", "source"}
     assert fields <= set(body["samples"][0].keys())
 

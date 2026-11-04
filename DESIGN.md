@@ -154,7 +154,25 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   regression. Any visual claim beyond the code/HTTP review above is
   therefore not made.
 
-## 7. Skill credit
+## 7. Milestone 2 interface additions
+
+The visual identity is unchanged; the milestone adds information views:
+
+- **Six inspector tabs**: Overview / **Data** / **Refs** / Diagnostics /
+  Tokens / AST. Data is the semantic data dictionary (hierarchy, PICTURE,
+  category, USAGE, storage bytes, digits.precision, sign, VALUE); Refs is the
+  identifier reference index (declaration link + every use with role and
+  location, click to navigate).
+- **Diagnostics severity filters** (All/Errors/Warnings/Info chips with live
+  counts) and an **Evidence** block on every finding — the computed reason
+  (declared PICTUREs, established bounds), distinct from the suggested
+  correction.
+- The pipeline strip and Overview gain the fifth stage (Semantic) and a
+  findings summary that separates established facts from possibilities.
+- New styles reuse the existing tokens only (no new colors); tables and the
+  dictionary tree use the same hairline/mono instrument language.
+
+## 8. Skill credit
 
 Methodology credit to the maintainers of `anthropics/skills` (frontend-design)
 and `addyosmani/agent-skills` (frontend-ui-engineering). Their text was used
