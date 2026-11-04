@@ -158,6 +158,33 @@ Project envelope grows additively (schema 4 → 5: `dataflow.decisions`,
 `dataflow.sequence`, project decision totals); single-file output is
 unchanged.
 
+### Business rule candidates (Milestone 8)
+
+On top of the decision paths, project analysis derives candidate
+business rules: each candidate connects a controlling condition, the
+data items it evaluates (resolved through the logical model with full
+copybook provenance), the operations of each established branch, the
+values those operations read and write, established downstream uses,
+and established cross-program relationships — with an explicit list of
+everything that is not established. Candidates exist only where the
+M7 structure is established (an established condition plus at least one
+supported branch operation); conditions without supported branch
+operations and decision structures that could not be established
+(EVALUATE bodies, unterminated IF) are recorded as `unsupported`, never
+promoted. Status is structural — `established_structure` or `partial`
+(partial when an operand is unresolved, an operation is not fully
+established, or an argument mapping is incomplete); no numeric
+confidence score exists because no defensible methodology for one does.
+Explanations are composed from recorded facts only ("IF WS-TOTAL > 1000
+at L13 controls a THEN branch containing MOVE at L14 writes
+WS-COUNT. The condition reads WS-TOTAL. The branch writes WS-COUNT.")
+— no business meaning is inferred, and a candidate is never a statement
+of business intent. The UI RULE CANDIDATES section presents candidates
+with their evidence chain; dynamic CALL targets are never attached.
+Project envelope grows additively (schema 5 → 6:
+`dataflow.rules` per program + rule totals; rule assumptions join the
+assumptions registry as RULE_001–RULE_004).
+
 ### Command-line use (batch / CI)
 
 ```bash
@@ -197,7 +224,7 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 205 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 222 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
@@ -207,7 +234,7 @@ python3 -m pytest app/tests/ -v
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**205 passed in ~2.9 s**.
+**222 passed in ~3.0 s**.
 
 ## API
 
@@ -272,6 +299,11 @@ DESIGN.md             design evidence: skills, tokens, UX decisions, review
   inserts a 4-space indent, Enter auto-indents, Escape releases focus) — no
   find/replace, multi-cursor, or bracket matching. A heavyweight editor
   dependency was evaluated and deliberately not added for this milestone.
+- Rule candidates (Milestone 8) are discovered structure, not extracted
+  business rules: no business meaning is inferred, no numeric confidence
+  is assigned, and a candidate says exactly which operands, operations
+  and argument mappings are unresolved. Complete business-rule
+  extraction is out of scope.
 - Decision-path analysis (Milestone 7) is structural, not a CFG engine: no
   reachability, equivalence or execution claims; EVALUATE is never
   interpreted (its bodies are not presented as IF branches); ELSE is never

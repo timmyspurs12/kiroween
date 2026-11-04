@@ -637,7 +637,7 @@ def test_single_file_envelope_unchanged_by_m5():
 def test_project_schema_stays_additive():
     name, entries = ingest_dir()
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 5
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 6
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage",
                 "assumptions", "summary", "cross_file"):
@@ -652,7 +652,7 @@ def test_project_schema_stays_additive():
         ("src/FEEDER.cbl", "src/AUDITER.cbl")]
     # impact data-flow still distinct and populated
     imp = impact(r, "src/GLUPDATE.cbl")
-    assert len(imp["data_flow"]["receives_data_from"]) == 3
+    assert len(imp["data_flow"]["receives_data_from"]) == 4
 
 
 def test_scan_moves_moves_without_to_recorded():

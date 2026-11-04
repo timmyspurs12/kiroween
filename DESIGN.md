@@ -248,6 +248,31 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   second model); no flowchart is drawn — evidence, ordering and source
   navigation first.
 
+## 7f. Milestone 8 interface additions (rule candidates)
+
+- Programs with eligible decisions gain a RULE CANDIDATES section: a
+  coverage line (candidates · established structure · partial) and one
+  card per candidate — RULE chip, line, the condition text, an explicit
+  "no ELSE in source" marker when absent, and the structural status
+  (established_structure / partial).
+- Opening a candidate shows, in order: the source-derived explanation
+  (with a traceability line: condition line, operation count, data-item
+  count), the condition operand chips with declaration provenance, THEN
+  and ELSE operations rendered as the same operation cards as DATA FLOW,
+  data items read and written (chips with copybook-origin markers and
+  unresolved uncertainty), downstream uses (later operations reading the
+  written items, with evidence), cross-program rows (argument → callee
+  parameter with the CALL line; incomplete mappings keep their
+  qualification badge and never read as a complete data contract), and
+  the "not established" list (unresolved operands, branch-operation
+  status, argument mappings).
+- Structures that could not establish a candidate (conditions without
+  supported branch operations, EVALUATE bodies, unterminated IF) are
+  listed under "rule structures not established" with reasons.
+- Selection is program-scoped and resets on program switch. The visual
+  language is the decision-path/operation one; no dashboard, scores or
+  invented rule names are shown.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

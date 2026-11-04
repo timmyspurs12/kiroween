@@ -9,6 +9,8 @@ import {
   CrossProgramLink,
   FlowOperand,
   DecisionRecord,
+  RuleCandidate,
+  RuleItem,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -665,6 +667,225 @@ function DecisionPathsView({ flow, selDecision, onSelect }: {
   );
 }
 
+// ---- rule candidates (Milestone 8) -----------------------------------------
+
+function ruleItemTitle(i: RuleItem): string {
+  const d = i.decl;
+  if (!d) return i.resolution ?? (i.text ?? "");
+  return `${d.source_file}:L${d.line} (${d.origin} origin)` +
+    (d.via_copybooks && d.via_copybooks.length
+      ? ` via ${d.via_copybooks.join(" > ")}`
+      : "");
+}
+
+function RuleItemChip({ i }: { i: RuleItem }) {
+  const uncertain = i.resolution && i.resolution !== "resolved" &&
+    i.resolution !== "literal";
+  return (
+    <span className={`df-operand ${uncertain ? "uncertain" : ""}`}
+          title={ruleItemTitle(i)}>
+      {i.name ?? i.text ?? "?"}
+      {i.decl?.origin === "copybook" && <span className="df-cb"> ⌘</span>}
+      {uncertain && <span className="df-unres"> ({i.resolution})</span>}
+    </span>
+  );
+}
+
+function RuleCandidateCard({ c, flow, selRule, onSelect }: {
+  c: RuleCandidate;
+  flow: DataflowProgram;
+  selRule: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const open = selRule === c.rule_id;
+  const opById = (id: string) =>
+    flow.operations.find((o) => o.op_id === id);
+  return (
+    <div className={`dec-card rule-card ${open ? "open" : ""}`}>
+      <button
+        className="dec-head"
+        onClick={() => onSelect(open ? null : c.rule_id)}
+        title={open ? "Collapse rule candidate" : "Inspect this rule candidate"}
+      >
+        <span className="xf-status interface parsed">RULE</span>
+        <span className="diag-loc">L{c.line}</span>
+        <span className="dec-cond">IF {c.condition_text}</span>
+        {c.has_else ? (
+          <span className="df-opt">ELSE</span>
+        ) : (
+          <span className="dec-noelse">no ELSE in source</span>
+        )}
+        <span className={`xf-status ${c.status === "partial" ? "partial" : "equal"}`}>
+          {c.status}
+        </span>
+      </button>
+      {open && (
+        <div className="dec-body">
+          <div className="dec-row">
+            <span className="df-block-title">source-derived explanation</span>
+            <span className="rule-expl">{c.explanation}</span>
+            <span className="df-cond-src">
+              traceable to: condition L{c.trace.condition_line}
+              {" · "}operations {c.trace.op_ids.length}
+              {" · "}data items {c.trace.decl_ids.length}
+            </span>
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">condition evaluated</span>
+            <span className="dec-operands">
+              {c.condition_operands.map((i, k) => (
+                <RuleItemChip key={k} i={i} />
+              ))}
+            </span>
+            <span className="df-cond-src">{c.trace.condition_evidence}</span>
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">
+              THEN — {c.then_ops.length} operation{c.then_ops.length === 1 ? "" : "s"}
+            </span>
+            {c.then_ops.map((id) => {
+              const o = opById(id);
+              return o ? <OpRow key={id} o={o} conds={flow.conditions} /> : (
+                <span key={id} className="lg-reason">operation record unavailable</span>
+              );
+            })}
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">ELSE</span>
+            {c.has_else ? (
+              c.else_ops.length > 0 ? (
+                c.else_ops.map((id) => {
+                  const o = opById(id);
+                  return o ? <OpRow key={id} o={o} conds={flow.conditions} /> : (
+                    <span key={id} className="lg-reason">operation record unavailable</span>
+                  );
+                })
+              ) : (
+                <span className="ov-note">
+                  ELSE present in source; no supported operation recorded in it
+                </span>
+              )
+            ) : (
+              <span className="dec-noelse">
+                no ELSE in source — none invented
+              </span>
+            )}
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">data items read</span>
+            <span className="dec-operands">
+              {c.items_read.map((i, k) => <RuleItemChip key={k} i={i} />)}
+            </span>
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">data items written</span>
+            <span className="dec-operands">
+              {c.items_written.map((i, k) => <RuleItemChip key={k} i={i} />)}
+            </span>
+          </div>
+          {c.downstream_uses.length > 0 && (
+            <div className="dec-row">
+              <span className="df-block-title">downstream uses</span>
+              {c.downstream_uses.map((u, k) => (
+                <span className="lg-ref-row" key={k}>
+                  <span className="lg-name">{u.label ?? u.op_id}</span>
+                  <span className="xf-pos-item">L{u.line}</span>
+                  <span className="pj-rel-ev">{u.evidence}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {c.cross_program.length > 0 && (
+            <div className="dec-row">
+              <span className="df-block-title">cross-program data flow</span>
+              {c.cross_program.map((x, k) => (
+                <span className="lg-ref-row" key={k}>
+                  <span className="lg-name">{x.argument}</span>
+                  <span className="xf-pos-item">
+                    → {x.callee} param {x.parameter} (CALL L{x.call_line})
+                  </span>
+                  {x.mapping_status !== "established" && (
+                    <span className="xf-size unknown">
+                      mapping {x.mapping_status}
+                    </span>
+                  )}
+                  {x.qualification && (
+                    <span className="lg-reason">{x.qualification}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+          {c.unresolved_elements.length > 0 && (
+            <div className="dec-row">
+              <span className="df-block-title">not established</span>
+              {c.unresolved_elements.map((u, k) => (
+                <span className="lg-ref-row" key={k}>
+                  <span className="lg-name">{u.element}</span>
+                  <span className="lg-reason">{u.detail} (L{u.line})</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuleCandidatesView({ flow, selRule, onSelect }: {
+  flow: DataflowProgram;
+  selRule: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const rules = flow.rules;
+  if (!rules) return null;
+  const cov = rules.coverage;
+  return (
+    <>
+      <p className="ov-note">
+        {cov.candidates_total ?? 0} candidate(s) ·{" "}
+        {cov.candidates_established_structure ?? 0} established structure ·{" "}
+        {cov.candidates_partial ?? 0} partial — click a candidate to inspect
+        its evidence. Candidates are source structure, not statements of
+        business intent.
+      </p>
+      <div className="dec-list">
+        {rules.candidates.map((c) => (
+          <RuleCandidateCard key={c.rule_id} c={c} flow={flow}
+                             selRule={selRule} onSelect={onSelect} />
+        ))}
+      </div>
+      {rules.candidates.length === 0 && (
+        <p className="ov-note">
+          No rule candidates established for this program.
+        </p>
+      )}
+      {rules.unsupported.length > 0 && (
+        <div className="lg-unsup">
+          <span className="df-block-title">
+            rule structures not established
+          </span>
+          {rules.unsupported.map((u) => (
+            <div className="lg-ref-row" key={u.rule_id}>
+              <span className="lg-name">{u.structure}</span>
+              <span className="lg-reason">
+                {u.source_file}:L{u.line} — {u.reason}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="ov-note">
+        Every explanation quotes recorded conditions, operations and data
+        items with their source lines; unresolved operands, incomplete
+        argument mappings and unsupported structures are listed, never
+        interpreted.
+      </p>
+    </>
+  );
+}
+
 function DeclTree({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const rows = [...m.declarations].sort((a, b) => {
     const da = a.source_file.localeCompare(b.source_file);
@@ -887,6 +1108,11 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
   // decision ids are program-scoped too: reset on program switch
   useEffect(() => {
     setSelDecision(null);
+  }, [selected]);
+  const [selRule, setSelRule] = useState<string | null>(null);
+  // rule ids are program-scoped as well
+  useEffect(() => {
+    setSelRule(null);
   }, [selected]);
   const xfCov = env?.cross_file?.coverage;
   const outMappings = useMemo(
@@ -1174,6 +1400,18 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                   flow={selFlow}
                   selDecision={selDecision}
                   onSelect={setSelDecision}
+                />
+              </div>
+            )}
+
+            {selFlow?.rules && (selFlow.rules.candidates.length > 0 ||
+              selFlow.rules.unsupported.length > 0) && (
+              <div className="ov-section">
+                <h3>RULE CANDIDATES</h3>
+                <RuleCandidatesView
+                  flow={selFlow}
+                  selRule={selRule}
+                  onSelect={setSelRule}
                 />
               </div>
             )}

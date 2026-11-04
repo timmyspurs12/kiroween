@@ -135,9 +135,9 @@ def test_nested_decisions_innermost_membership():
     assert inner_op["line"] == 16
     # and is not a direct member of the outer branch
     assert inner["then_ops"][0] not in outer["then_ops"]
-    # a statement after the nested END-IF but before the outer END-IF
-    # belongs to the outer THEN branch
-    assert len(outer["then_ops"]) == 2
+    # statements after the nested END-IF but before the outer END-IF
+    # belong to the outer THEN branch
+    assert len(outer["then_ops"]) == 3
     late = [o for o in ops_of(r, "src/DECISIONS.cbl")
             if o["op_id"] == outer["then_ops"][1]][0]
     assert late["line"] == 18
@@ -152,13 +152,13 @@ def test_convergence_and_join_edges():
     outer = scanned_decision(r, "src/DECISIONS.cbl", 13)
     # convergence: first supported operation after END-IF (L21)
     conv = outer["convergence"]
-    assert conv["kind"] == "operation" and conv["line"] == 22
-    assert "converge" in conv["evidence"] and "END-IF at L21" in \
+    assert conv["kind"] == "operation" and conv["line"] == 24
+    assert "converge" in conv["evidence"] and "END-IF at L23" in \
         conv["evidence"]
-    assert outer["summary"]["after"] == "MOVE at L22 writes LK-ID"
+    assert outer["summary"]["after"] == "MOVE at L24 writes LK-ID"
     jid = "j:" + outer["decision_id"]
     join_nodes = [n for n in fl["graph"]["nodes"] if n["id"] == jid]
-    assert len(join_nodes) == 1 and join_nodes[0]["line"] == 21
+    assert len(join_nodes) == 1 and join_nodes[0]["line"] == 23
     kinds = {}
     for e in fl["graph"]["edges"]:
         if e["to"] == jid or e["from"] == jid:
@@ -166,7 +166,7 @@ def test_convergence_and_join_edges():
     # then-ops and else-ops converge into the join; the condition
     # decides; the following operation continues after it
     assert sorted(e["role"] for e in kinds["joins"]) == \
-        ["else", "then", "then"]
+        ["else", "then", "then", "then"]
     assert len(kinds["decides"]) == 1
     assert kinds["decides"][0]["from"] == "c:" + outer["condition_id"]
     assert kinds["continues"][0]["to"] == "o:" + conv["op_id"]
@@ -181,7 +181,7 @@ def test_post_decision_sequence_order():
                    sorted(fl["operations"],
                           key=lambda x: (x["line"], x["col"]))]
     lines = [ops[oid]["line"] for oid in seq]
-    assert lines == sorted(lines) == [11, 12, 14, 16, 18, 20, 22]
+    assert lines == sorted(lines) == [11, 12, 14, 16, 18, 19, 22, 24]
 
 
 def test_parser_backed_decisions_from_ast():

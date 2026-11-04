@@ -395,16 +395,16 @@ def test_example_project_cross_file_flagship_end_to_end():
     assert est[0]["positions"][0]["caller_decl"]["file"] == \
         "copybooks/AUDREC.cpy"
     cov = xf["coverage"]
-    assert cov["call_edges"] == 6 and cov["mappings_total"] == 6
+    assert cov["call_edges"] == 7 and cov["mappings_total"] == 7
     assert cov["mappings_established"] == 1
-    assert cov["mappings_incomplete"] == 3
+    assert cov["mappings_incomplete"] == 4
     assert cov["mappings_unresolved"] == 2
     assert cov["interfaces_documented"] == 11  # M7 adds DECISIONS
     assert cov["copybooks_indexed"] == 6
     # M5: logical model coverage
     assert cov["logical_programs"] == 11  # M7 adds DECISIONS
     assert cov["copybook_semantic_findings"] == 3
-    assert cov["references_resolved"] == 12  # DECISIONS adds 6 MOVE refs
+    assert cov["references_resolved"] == 13
 
 
 def test_impact_data_flow_distinct_from_dependencies():
@@ -414,6 +414,7 @@ def test_impact_data_flow_distinct_from_dependencies():
     df = imp["data_flow"]
     assert [(d["with"], d["status"]) for d in df["receives_data_from"]] == [
         ("src/AUDTOTAL.cbl", "incomplete"), ("src/BILLING.cbl", "incomplete"),
+        ("src/DECISIONS.cbl", "incomplete"),
         ("src/PAYROLL.cbl", "incomplete")]
     assert df["sends_data_to"] == []
     assert df["unresolved_data_relationships"] == []
@@ -435,7 +436,7 @@ def test_cross_file_determinism():
 def test_schema_v3_is_additive_over_v1():
     name, entries = ingest_directory("examples/sample-project")
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 5
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 6
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
                 "summary"):

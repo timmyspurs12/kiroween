@@ -235,7 +235,7 @@ def test_per_file_rejected_carry_reason_and_no_downgrade():
 
 def test_project_envelope_shape_and_coverage():
     r = example_project()
-    assert r["schema_version"] == 5  # v5 adds dataflow.decisions
+    assert r["schema_version"] == 6  # v6 adds dataflow.rules
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
                 "summary"):
@@ -244,8 +244,8 @@ def test_project_envelope_shape_and_coverage():
     assert cov["files_total"] == 17  # M7 adds src/DECISIONS.cbl
     assert cov["files_analyzed"] == 1 and cov["files_rejected"] == 10
     assert cov["files_copybook"] == 6
-    assert cov["dependencies_total"] == 17  # DECISIONS copies AUDREC
-    assert cov["dependencies_resolved"] == 13
+    assert cov["dependencies_total"] == 18
+    assert cov["dependencies_resolved"] == 14
     assert cov["dependencies_unresolved"] == 3
     assert cov["dependencies_ambiguous"] == 1
     assert cov["cycles"] == 1
@@ -298,7 +298,7 @@ def test_coverage_reports_items_needing_human_review():
     # risk-class findings (dynamic CALL, ambiguous COPY, cycle) are the
     # review items; the missing-copybook violation is not a review item
     r = example_project()
-    assert r["coverage"]["needs_human_review"] == 13
+    assert r["coverage"]["needs_human_review"] == 14  # +DECISIONS CALL size mismatch
     # single-file schema uses the same semantics: risks, not violations
     gl = r["per_file"]["src/GLUPDATE.cbl"]["result"]
     assert gl["coverage"]["needs_human_review"] == \
@@ -372,9 +372,9 @@ def test_api_project_and_example_endpoints():
             ex = json.load(res)
         assert ex["name"] == "sample-project" and len(ex["files"]) == 17
         r = _post_project(base, {"name": ex["name"], "files": ex["files"]})
-        assert r["schema_version"] == 5  # v5 adds dataflow.decisions
-        assert len(r["edges"]) == 17  # DECISIONS COPY edge
-        assert len(r["impact"]) == 17  # stateless: impact embedded per file (M7 +DECISIONS)
+        assert r["schema_version"] == 6  # v6 adds dataflow.rules
+        assert len(r["edges"]) == 18
+        assert len(r["impact"]) == 17
         imp = r["impact"]["copybooks/Q.cpy"]
         assert imp["transitive_dependants"] == [
             "copybooks/P.cpy", "src/CYCTEST.cbl"]
@@ -394,8 +394,8 @@ def test_cli_project_exit_codes_and_json():
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 1  # missing copybook = violation-class finding
     env = json.loads(r.stdout)
-    assert env["schema_version"] == 5
-    assert env["coverage"]["dependencies_resolved"] == 13
+    assert env["schema_version"] == 6
+    assert env["coverage"]["dependencies_resolved"] == 14
 
     # human mode: still exit 1, findings printed
     r2 = subprocess.run(CLI + ["project", "analyze", str(EXAMPLE)],

@@ -34,8 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 5  # v5: dataflow gains the decision-path
-                             # model (Milestone 7)
+PROJECT_SCHEMA_VERSION = 6  # v6: dataflow gains rule candidates
+                             # (Milestone 8)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -349,8 +349,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 5:
-    dataflow gains the decision-path model: decisions, sequence, joins)."""
+    "error": reason}] — build the full project envelope (schema_version 6:
+    dataflow gains rule candidates derived from decisions + data flow)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -666,7 +666,9 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
     # ---- statement-level data flow + decisions (Milestones 6+7) ----------
     from necro import dataflow as _dataflow
     from necro import decisions as _decisions
+    from necro import rules as _rules
     from necro.dataflow import DFA_ASSUMPTIONS
+    from necro.rules import RULE_ASSUMPTIONS
     flow_programs: Dict[str, dict] = {}
     for fid in sorted(models):
         model = models[fid]
@@ -827,13 +829,32 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
             len(f["unsupported_statements"])
             for f in flow_programs.values()),
     }
+    # rule candidates (Milestone 8): derived in a second pass so every
+    # relationship (decisions, operations, links) is already resolved
+    rules_totals = {"candidates_total": 0,
+                    "candidates_established_structure": 0,
+                    "candidates_partial": 0, "unsupported_total": 0}
+    for fid in sorted(flow_programs):
+        section = _rules.discover_rules(
+            fid, flow_programs[fid], models.get(fid), links)
+        flow_programs[fid]["rules"] = section
+        for k in rules_totals:
+            rules_totals[k] += section["coverage"][k]
+    dfd_totals.update({
+        "rules_total": rules_totals["candidates_total"],
+        "rules_established_structure":
+            rules_totals["candidates_established_structure"],
+        "rules_partial": rules_totals["candidates_partial"],
+        "rules_unsupported": rules_totals["unsupported_total"],
+    })
     cross_file["dataflow"] = {
-        "schema_note": "statement-level data flow (project schema v4); "
-                       "edges are static source structure, not proof of "
-                       "runtime execution",
+        "schema_note": "statement-level data flow (project schema v4) "
+                       "with decision paths (v5) and rule candidates "
+                       "(v6); edges are static source structure, not "
+                       "proof of runtime execution",
         "programs": flow_programs,
         "cross_program_links": links,
-        "assumptions": DFA_ASSUMPTIONS,
+        "assumptions": DFA_ASSUMPTIONS + RULE_ASSUMPTIONS,
         "coverage": dfd_totals,
     }
     cross_file["coverage"].update({

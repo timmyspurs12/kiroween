@@ -16,6 +16,8 @@
                    MOVE ZERO TO LK-ID
                END-IF
                MOVE SPACE TO WS-FLAG
+               MOVE ZERO TO WS-ADJ
+               CALL "GLUPDATE" USING WS-ADJ
            ELSE
                MOVE 2 TO LK-ID
            END-IF

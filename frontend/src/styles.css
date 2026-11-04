@@ -2121,3 +2121,11 @@ button {
   display: grid;
   gap: var(--sp-2);
 }
+
+/* ---- rule candidates (Milestone 8) ---- */
+.rule-card { border-left-color: var(--verdigris, var(--accent)); }
+.rule-expl {
+  font-size: var(--fs-1);
+  color: var(--text);
+  line-height: var(--lh-body);
+}

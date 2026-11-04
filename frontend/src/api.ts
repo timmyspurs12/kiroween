@@ -494,8 +494,101 @@ export interface DataflowProgram {
   conditions: DataflowCondition[];
   decisions?: DecisionRecord[];
   sequence?: string[];
+  rules?: RulesSection;
   graph: { nodes: FlowNode[]; edges: FlowEdge[] };
   unsupported_statements: { structure: string; file: string; line: number; reason: string; text: string }[];
+  coverage: Record<string, number>;
+}
+
+// ---- rule candidates (Milestone 8) ----------------------------------------
+
+export interface RuleItem {
+  name?: string | null;
+  text?: string | null;
+  kind?: string | null;
+  role?: string;
+  resolution?: string | null;
+  decl?: FlowDecl;
+  candidates?: RefCandidate[];
+  side?: string;
+  source_file?: string | null;
+  line?: number | null;
+  origin?: string | null;
+  via_copybooks?: string[];
+}
+
+export interface RuleOpRef {
+  op_id: string;
+  type: string;
+  line: number;
+  col: number;
+  status: string;
+  evidence: string;
+  summary: string | null;
+  reads: { name?: string | null; text?: string | null; kind?: string | null; resolution?: string | null }[];
+  writes: { name?: string | null; resolution?: string | null }[];
+}
+
+export interface RuleCrossProgram {
+  callee: string;
+  argument: string | null;
+  parameter: string | null;
+  call_line: number;
+  call_evidence: string;
+  status: string;
+  mapping_status: string | null;
+  position: number | null;
+  written_by_op: string;
+  callee_reads: { op_id: string; line: number; evidence: string }[];
+  reason?: string | null;
+  qualification?: string | null;
+}
+
+export interface RuleCandidate {
+  rule_id: string;
+  program: string;
+  source_file: string;
+  line: number;
+  end_line: number | null;
+  origin: string;
+  decision_id: string;
+  condition_id: string;
+  condition_text: string;
+  condition_operands: RuleItem[];
+  has_else: boolean;
+  then_ops: string[];
+  else_ops: string[];
+  items_read: RuleItem[];
+  items_written: RuleItem[];
+  downstream_uses: { via_item: string; op_id: string; label: string | null; line: number | null; evidence: string | null }[];
+  cross_program: RuleCrossProgram[];
+  unresolved_elements: { element: string; detail: string; line: number }[];
+  status: "established_structure" | "partial";
+  explanation: string;
+  trace: {
+    condition_line: number | null;
+    condition_evidence: string | null;
+    op_ids: string[];
+    decl_ids: string[];
+    summary: DecisionSummary;
+  };
+}
+
+export interface RuleUnsupported {
+  rule_id: string;
+  program: string;
+  source_file: string;
+  line: number | null;
+  structure: string;
+  status: "unsupported";
+  reason: string;
+  evidence: string;
+}
+
+export interface RulesSection {
+  program: string;
+  candidates: RuleCandidate[];
+  unsupported: RuleUnsupported[];
   coverage: Record<string, number>;
 }
 
