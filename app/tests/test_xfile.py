@@ -399,12 +399,12 @@ def test_example_project_cross_file_flagship_end_to_end():
     assert cov["mappings_established"] == 1
     assert cov["mappings_incomplete"] == 3
     assert cov["mappings_unresolved"] == 2
-    assert cov["interfaces_documented"] == 10
+    assert cov["interfaces_documented"] == 11  # M7 adds DECISIONS
     assert cov["copybooks_indexed"] == 6
     # M5: logical model coverage
-    assert cov["logical_programs"] == 10
+    assert cov["logical_programs"] == 11  # M7 adds DECISIONS
     assert cov["copybook_semantic_findings"] == 3
-    assert cov["references_resolved"] == 6
+    assert cov["references_resolved"] == 12  # DECISIONS adds 6 MOVE refs
 
 
 def test_impact_data_flow_distinct_from_dependencies():
@@ -435,7 +435,7 @@ def test_cross_file_determinism():
 def test_schema_v3_is_additive_over_v1():
     name, entries = ingest_directory("examples/sample-project")
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 4
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 5
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
                 "summary"):

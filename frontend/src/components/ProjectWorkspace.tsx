@@ -8,6 +8,7 @@ import {
   DataflowProgram,
   CrossProgramLink,
   FlowOperand,
+  DecisionRecord,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -494,6 +495,176 @@ function DataFlowView({ flow, links, program, onSelect }: {
   );
 }
 
+// ---- decision paths (Milestone 7) -----------------------------------------
+
+function DecisionCard({ d, flow, selDecision, onSelect }: {
+  d: DecisionRecord;
+  flow: DataflowProgram;
+  selDecision: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const cond = flow.conditions.find((c) => c.cond_id === d.condition_id);
+  const condText = cond
+    ? `${operandLabel(cond.left)} ${cond.op ?? "?"} ${operandLabel(cond.right)}`
+    : d.summary.condition;
+  const children = (d.nested_decisions ?? [])
+    .map((id) => flow.decisions?.find((x) => x.decision_id === id))
+    .filter((x): x is DecisionRecord => !!x);
+  const open = selDecision === d.decision_id;
+  const opById = (id: string) =>
+    flow.operations.find((o) => o.op_id === id);
+  return (
+    <div className={`dec-card ${open ? "open" : ""}`}>
+      <button
+        className="dec-head"
+        onClick={() => onSelect(open ? null : d.decision_id)}
+        title={open ? "Collapse decision detail" : "Inspect this decision"}
+      >
+        <span className="xf-status interface parsed">IF</span>
+        <span className="diag-loc">L{d.line}</span>
+        <span className="dec-cond">{condText ?? "condition not established"}</span>
+        {d.has_else ? (
+          <span className="df-opt">ELSE</span>
+        ) : (
+          <span className="dec-noelse">no ELSE in source</span>
+        )}
+        <span className={`xf-status interface ${d.origin}`}>{d.origin}</span>
+      </button>
+      {open && (
+        <div className="dec-body">
+          <div className="dec-row">
+            <span className="df-block-title">condition evaluated</span>
+            {cond ? (
+              <>
+                <span className="dec-operands">
+                  <OperandChip o={cond.left} /> {cond.op}{" "}
+                  <OperandChip o={cond.right} />
+                </span>
+                <span className="df-cond-src">{cond.evidence}</span>
+              </>
+            ) : (
+              <span className="lg-reason">condition record unavailable</span>
+            )}
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">
+              THEN — {d.then_ops.length} operation{d.then_ops.length === 1 ? "" : "s"}
+            </span>
+            {d.then_ops.map((id) => {
+              const o = opById(id);
+              return o ? <OpRow key={id} o={o} conds={flow.conditions} /> : (
+                <span key={id} className="lg-reason">operation record unavailable</span>
+              );
+            })}
+            {d.then_ops.length === 0 && (
+              <span className="ov-note">no supported operation in this branch</span>
+            )}
+          </div>
+          <div className="dec-row">
+            <span className="df-block-title">ELSE</span>
+            {d.has_else ? (
+              d.else_ops.length > 0 ? (
+                d.else_ops.map((id) => {
+                  const o = opById(id);
+                  return o ? <OpRow key={id} o={o} conds={flow.conditions} /> : (
+                    <span key={id} className="lg-reason">operation record unavailable</span>
+                  );
+                })
+              ) : (
+                <span className="ov-note">
+                  ELSE present in source; no supported operation recorded in it
+                </span>
+              )
+            ) : (
+              <span className="dec-noelse">
+                no ELSE in source — none invented
+              </span>
+            )}
+          </div>
+          {children.length > 0 && (
+            <div className="dec-row">
+              <span className="df-block-title">
+                nested decisions — {children.length}
+              </span>
+              <div className="dec-nested">
+                {children.map((c) => (
+                  <DecisionCard key={c.decision_id} d={c} flow={flow}
+                                selDecision={selDecision} onSelect={onSelect} />
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="dec-row">
+            <span className="df-block-title">after the decision</span>
+            <span className="xf-pos-item">
+              {d.summary.after ??
+                "no supported operation follows the decision"}
+            </span>
+            {d.convergence && (
+              <span className="pj-rel-ev">{d.convergence.evidence}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DecisionPathsView({ flow, selDecision, onSelect }: {
+  flow: DataflowProgram;
+  selDecision: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const decisions = flow.decisions ?? [];
+  const roots = decisions.filter((d) => !d.parent_decision);
+  const cov = flow.coverage;
+  const boundaries = flow.unsupported_statements.filter((u) =>
+    /IF|EVALUATE|transfer/i.test(u.structure));
+  return (
+    <>
+      {decisions.length > 0 && (
+        <p className="ov-note">
+          {cov.decisions_total ?? decisions.length} decision(s) ·{" "}
+          {cov.decisions_with_else ?? 0} with ELSE ·{" "}
+          {cov.nested_decisions ?? 0} nested — click a decision to inspect
+          its branches and convergence.
+        </p>
+      )}
+      {decisions.length === 0 && (
+        <p className="ov-note">
+          No decision structure established for this program.
+        </p>
+      )}
+      <div className="dec-list">
+        {roots.map((d) => (
+          <DecisionCard key={d.decision_id} d={d} flow={flow}
+                        selDecision={selDecision} onSelect={onSelect} />
+        ))}
+      </div>
+      {boundaries.length > 0 && (
+        <div className="lg-unsup">
+          <span className="df-block-title">
+            decision boundaries not established
+          </span>
+          {boundaries.map((u, i) => (
+            <div className="lg-ref-row" key={i}>
+              <span className="lg-name">{u.structure}</span>
+              <span className="lg-reason">
+                {u.file}:L{u.line} — {u.reason}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="ov-note">
+        Branch membership, nesting and convergence come from source evidence
+        only; ELSE is never assumed, and unsupported constructs stop the path
+        and say so.
+      </p>
+    </>
+  );
+}
+
 function DeclTree({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const rows = [...m.declarations].sort((a, b) => {
     const da = a.source_file.localeCompare(b.source_file);
@@ -711,6 +882,11 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
   // another program's model)
   useEffect(() => {
     setFlowDecl(null);
+  }, [selected]);
+  const [selDecision, setSelDecision] = useState<string | null>(null);
+  // decision ids are program-scoped too: reset on program switch
+  useEffect(() => {
+    setSelDecision(null);
   }, [selected]);
   const xfCov = env?.cross_file?.coverage;
   const outMappings = useMemo(
@@ -986,6 +1162,18 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                   links={xf?.dataflow?.cross_program_links ?? []}
                   program={selected ?? ""}
                   onSelect={setSelected}
+                />
+              </div>
+            )}
+
+            {selFlow && ((selFlow.decisions?.length ?? 0) > 0 ||
+              selFlow.unsupported_statements.length > 0) && (
+              <div className="ov-section">
+                <h3>DECISION PATHS</h3>
+                <DecisionPathsView
+                  flow={selFlow}
+                  selDecision={selDecision}
+                  onSelect={setSelDecision}
                 />
               </div>
             )}

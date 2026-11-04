@@ -449,11 +449,51 @@ export interface DataflowCondition {
   status: string;
 }
 
+// ---- decision paths (Milestone 7) ----------------------------------------
+
+export interface DecisionConvergence {
+  kind: "operation" | "scope-end";
+  op_id: string | null;
+  line: number;
+  evidence: string;
+}
+
+export interface DecisionSummary {
+  condition: string | null;
+  then: string[];
+  else: string[] | null;
+  after: string | null;
+}
+
+export interface DecisionRecord {
+  decision_id: string;
+  program: string;
+  source_file: string;
+  line: number;
+  col: number;
+  origin: "parsed" | "scanned";
+  condition_id: string;
+  has_else: boolean;
+  then_ops: string[];
+  else_ops: string[];
+  nested_decisions: string[];
+  parent_decision: string | null;
+  end_line: number;
+  convergence: DecisionConvergence | null;
+  status: string;
+  evidence: string;
+  summary: DecisionSummary;
+  then_lines?: number[];
+  else_lines?: number[];
+}
+
 export interface DataflowProgram {
   program: string;
   origin: "parsed" | "scanned";
   operations: DataflowOp[];
   conditions: DataflowCondition[];
+  decisions?: DecisionRecord[];
+  sequence?: string[];
   graph: { nodes: FlowNode[]; edges: FlowEdge[] };
   unsupported_statements: { structure: string; file: string; line: number; reason: string; text: string }[];
   coverage: Record<string, number>;

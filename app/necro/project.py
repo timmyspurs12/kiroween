@@ -34,8 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 4  # v4: cross_file gains the statement-
-                             # level data-flow model (Milestone 6)
+PROJECT_SCHEMA_VERSION = 5  # v5: dataflow gains the decision-path
+                             # model (Milestone 7)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -349,8 +349,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 4:
-    cross_file gains the statement-level data-flow model)."""
+    "error": reason}] — build the full project envelope (schema_version 5:
+    dataflow gains the decision-path model: decisions, sequence, joins)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -663,8 +663,9 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         }
     cross_file["logical"] = logical_section
 
-    # ---- statement-level data flow (Milestone 6) -------------------------
+    # ---- statement-level data flow + decisions (Milestones 6+7) ----------
     from necro import dataflow as _dataflow
+    from necro import decisions as _decisions
     from necro.dataflow import DFA_ASSUMPTIONS
     flow_programs: Dict[str, dict] = {}
     for fid in sorted(models):
@@ -674,10 +675,20 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         if pf.get("status") == "analyzed" and pf.get("result"):
             ops, conds = _dataflow.ops_from_ast(pf["result"], fid, model)
             unsup = []
+            # identity first: decisions reference operations by op_id
+            for op in ops:
+                op["op_id"] = _dataflow._op_id(fid, op["line"],
+                                               op["col"], op["type"])
+            decisions = _decisions.decisions_from_ast(
+                pf["result"], fid, conds, ops)
+            guards: Dict[int, List[dict]] = {}
+            spans: List[dict] = []
+            suppressed: set = set()
+            parsed = True
         else:
             moves, m_unsup = _logical.scan_moves(fid, contents[fid])
-            conds, guards, c_unsup, suppressed = \
-                _dataflow.scan_conditions(fid, contents[fid])
+            conds, decisions, guards, spans, suppressed, d_unsup = \
+                _decisions.scan_decisions(fid, contents[fid])
             # statements inside unsupported constructs (EVALUATE bodies)
             # are not emitted as operations: their controlling context
             # was never established
@@ -687,7 +698,23 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
             arith, a_unsup = _dataflow.scan_arithmetic(
                 fid, contents[fid], suppressed)
             for op in move_ops + arith:
-                op["guards"] = guards.get(op["line"], [])
+                gs = list(guards.get(op["line"], []))
+                for sp in spans:
+                    if (sp["line"] == op["line"]
+                            and sp["col_start"] <= (op["col"] or 0)
+                            < sp["col_end"]):
+                        gs.append({"cond_id": sp["cond_id"],
+                                   "branch": sp["branch"],
+                                   "line": sp["line"]})
+                # de-duplicate identical guard entries
+                seen_g = set()
+                dedup = []
+                for g in gs:
+                    key = (g["cond_id"], g["branch"], g["line"])
+                    if key not in seen_g:
+                        seen_g.add(key)
+                        dedup.append(g)
+                op["guards"] = dedup
                 op["op_id"] = _dataflow._op_id(fid, op["line"], op["col"],
                                                op["type"])
             refs_sink: List[dict] = []
@@ -702,26 +729,70 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
                           "DIVIDE statement", "IF statement"}
             unsup = ([u for u in m_unsup
                       if u["structure"] not in superseded]
-                     + a_unsup + c_unsup)
+                     + a_unsup + d_unsup)
+            parsed = False
         for op in ops:
             if not op["op_id"]:
                 op["op_id"] = _dataflow._op_id(fid, op["line"],
                                                op["col"], op["type"])
+        # decision paths: branch membership, convergence, summaries
+        if parsed:
+            ops_by_span = {(o["type"], o["line"], o["col"]): o["op_id"]
+                           for o in ops}
+        else:
+            _decisions.assign_branches(decisions, ops, spans)
+            _decisions.resolve_convergence(decisions, ops, parsed=False)
+        _decisions.resolve_convergence(decisions, ops, parsed=parsed)
+        ops_by_id = {o["op_id"]: o for o in ops}
+        _decisions.build_summaries(decisions, conds, ops_by_id)
+        decisions.sort(key=lambda d: (d["line"], d["col"]))
+        sequence = [o["op_id"] for o in sorted(
+            ops, key=lambda x: (x["line"], x["col"]))]
         graph = _dataflow.build_graph(fid, model, ops, conds)
+        # join nodes + convergence edges (deterministic)
+        for d in decisions:
+            jid = "j:" + d["decision_id"]
+            graph["nodes"].append({
+                "id": jid, "kind": "join", "ref": d["decision_id"],
+                "label": "JOIN", "origin": d["origin"],
+                "source_file": fid, "line": d["end_line"]})
+            for oid, branch in ([(o, "then") for o in d["then_ops"]]
+                                + [(o, "else") for o in d["else_ops"]]):
+                graph["edges"].append({
+                    "from": "o:" + oid, "to": jid, "kind": "joins",
+                    "role": branch, "line": d["end_line"],
+                    "evidence": "branch converges after the decision "
+                                "at L%d" % d["end_line"]})
+            graph["edges"].append({
+                "from": "c:" + d["condition_id"], "to": jid,
+                "kind": "decides", "role": None, "line": d["line"],
+                "evidence": d["evidence"][:80]})
+            if d["convergence"] and d["convergence"].get("op_id"):
+                graph["edges"].append({
+                    "from": jid, "to": "o:" + d["convergence"]["op_id"],
+                    "kind": "continues", "role": None,
+                    "line": d["convergence"]["line"],
+                    "evidence": d["convergence"]["evidence"]})
         ops_cov = {"operations_total": len(ops)}
         for st in ("established", "partial", "unresolved", "unsupported"):
             ops_cov["operations_" + st] = sum(
                 1 for o in ops if o["status"] == st)
         flow_programs[fid] = {
             "program": fid,
-            "origin": ("parsed" if ops and ops[0]["origin"] == "parsed"
-                       else "scanned"),
+            "origin": ("parsed" if parsed else "scanned"),
             "operations": ops,
             "conditions": conds,
+            "decisions": decisions,
+            "sequence": sequence,
             "graph": graph,
             "unsupported_statements": unsup,
             "coverage": dict(ops_cov, **{
                 "conditions_total": len(conds),
+                "decisions_total": len(decisions),
+                "decisions_with_else": sum(
+                    1 for d in decisions if d["has_else"]),
+                "nested_decisions": sum(
+                    1 for d in decisions if d["parent_decision"]),
                 "edges_total": len(graph["edges"]),
                 "nodes_total": len(graph["nodes"]),
             }),
@@ -740,6 +811,12 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
             f["coverage"]["operations_unsupported"]
             for f in flow_programs.values()),
         "conditions_total": sum(f["coverage"]["conditions_total"]
+                                for f in flow_programs.values()),
+        "decisions_total": sum(f["coverage"]["decisions_total"]
+                               for f in flow_programs.values()),
+        "decisions_with_else": sum(f["coverage"]["decisions_with_else"]
+                                   for f in flow_programs.values()),
+        "nested_decisions": sum(f["coverage"]["nested_decisions"]
                                 for f in flow_programs.values()),
         "edges_total": sum(f["coverage"]["edges_total"]
                            for f in flow_programs.values()),

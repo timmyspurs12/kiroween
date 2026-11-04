@@ -30,7 +30,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .diagnostics import (Diagnostic, SEVERITY_ERROR, SEVERITY_INFO,
                           SEVERITY_WARNING)
-from .logical import scan_moves, resolve_name, _ref
+from .logical import _FIGURATIVE_RE, scan_moves, resolve_name, _ref
 from .project import _content, _indicator_ok
 from .semantic import (Cap, SEM_DIVISOR_ZERO, _division_zero,
                        _is_zero_literal, _receiver_risks, explain, expr_cap)
@@ -188,6 +188,57 @@ def _iter_sentences(file_id: str, text: str) -> Tuple[List[dict], List[dict]]:
             i += 1
             continue
         stripped = _content(lines[i]).strip()
+        # inline statements on control lines (IF / ELSE / END-IF) are
+        # emitted as segment sentences with column positions so branch
+        # attribution and evidence stay exact
+        if re.match(r"^IF\b", stripped, re.IGNORECASE):
+            parsed = parse_if_line(stripped)
+            if parsed.get("error"):
+                problems.append({
+                    "structure": "inline IF", "file": file_id,
+                    "line": i + 1, "reason": parsed["error"],
+                    "text": stripped[:80]})
+            else:
+                for col, seg in (parsed["then"] + parsed["else"]
+                                 + parsed["cont"]):
+                    vm = _DATA_VERB_START_RE.match(seg)
+                    sentences.append({
+                        "verb": vm.group(1).upper(),
+                        "line": i + 1, "col": col,
+                        "text": seg,
+                        "lines": [(i, seg)], "ended": True,
+                        "inline": True})
+            i += 1
+            continue
+        if re.match(r"^ELSE\b", stripped, re.IGNORECASE):
+            for col, seg in parse_tail_line(stripped, "ELSE"):
+                vm = _DATA_VERB_START_RE.match(seg)
+                sentences.append({
+                    "verb": vm.group(1).upper(), "line": i + 1,
+                    "col": col, "text": seg,
+                    "lines": [(i, seg)], "ended": True, "inline": True})
+            i += 1
+            continue
+        if re.match(r"^END-IF\b", stripped, re.IGNORECASE):
+            for col, seg in parse_tail_line(stripped, "END-IF"):
+                vm = _DATA_VERB_START_RE.match(seg)
+                sentences.append({
+                    "verb": vm.group(1).upper(), "line": i + 1,
+                    "col": col, "text": seg,
+                    "lines": [(i, seg)], "ended": True, "inline": True})
+            i += 1
+            continue
+        if _TRANSFER_RE.match(stripped):
+            kw = stripped.split(None, 1)[0].upper()
+            problems.append({
+                "structure": kw + " transfer", "file": file_id,
+                "line": i + 1,
+                "reason": kw + " control transfer is outside the "
+                          "supported decision structure; the "
+                          "surrounding flow is not established",
+                "text": stripped[:80]})
+            i += 1
+            continue
         m = _VERB_RE.match(stripped)
         if not m:
             i += 1
@@ -236,6 +287,7 @@ def _iter_sentences(file_id: str, text: str) -> Tuple[List[dict], List[dict]]:
                 "text": text_joined,
                 "lines": parts,
                 "ended": True,
+                "inline": False,
             })
         i = j + 1
     return sentences, problems
@@ -344,6 +396,43 @@ def _targets(seg: str) -> Optional[List[dict]]:
     return out
 
 
+def _move_op_from_segment(file_id: str, s: dict) -> Optional[dict]:
+    """Operation record for an inline MOVE segment (IF/ELSE/END-IF
+    lines). Reuses the logical scanner's operand parsing."""
+    from .logical import _TOKEN_RE, _TO_SPLIT_RE, _parse_operand
+    body = re.sub(r"^MOVE\b", "", s["text"], count=1,
+                  flags=re.IGNORECASE).strip()
+    parts = _TO_SPLIT_RE.split(body, maxsplit=1)
+    if len(parts) != 2:
+        return None
+    src = _parse_operand(parts[0].strip())
+    if src["kind"] in ("unsupported", "figurative-unsupported"):
+        return None
+    receivers = []
+    for tok in _TOKEN_RE.findall(parts[1].strip()):
+        od = _parse_operand(tok)
+        if od["kind"] != "identifier":
+            return None
+        receivers.append(od)
+    if not receivers:
+        return None
+    return {
+        "op_id": None, "program": file_id, "source_file": file_id,
+        "line": s["line"], "col": s["col"], "type": "MOVE",
+        "origin": "scanned", "status": "partial",
+        "source_operands": [{"role": "source", "kind": src["kind"],
+                             **({"name": src["name"],
+                                 "parent": src.get("parent")}
+                                if src["kind"] == "identifier"
+                                else {"text": src.get("text")})}],
+        "receivers": [{"name": t["name"], "parent": t.get("parent"),
+                       "rounded": False} for t in receivers],
+        "options": {"rounded": False, "size_error": False,
+                    "mode": None, "giving": False, "remainder": None},
+        "guards": [], "evidence": s["text"][:120], "expression": None,
+    }
+
+
 def scan_arithmetic(file_id: str, text: str,
                     suppressed: Optional[set] = None) -> Tuple[
                         List[dict], List[dict]]:
@@ -363,6 +452,18 @@ def scan_arithmetic(file_id: str, text: str,
         body = re.sub(r"^%s\b" % verb, "", body, count=1,
                       flags=re.IGNORECASE).strip()
         if verb == "MOVE":
+            if s.get("inline"):
+                op = _move_op_from_segment(file_id, s)
+                if op is None:
+                    unsupported.append({
+                        "structure": "inline MOVE", "file": file_id,
+                        "line": s["line"],
+                        "reason": "inline MOVE operands cannot be "
+                                  "interpreted",
+                        "text": s["text"][:80]})
+                else:
+                    ops.append(op)
+                continue
             if len(s["lines"]) == 1:
                 continue      # scan_moves is the MOVE authority
             # a MOVE sentence spanning lines is not interpreted
@@ -732,6 +833,181 @@ _COND_OP_RE = re.compile(
     r"^(NOT\s+)?(=|<>|<=|>=|<|>|EQUAL TO|GREATER THAN|LESS THAN)$",
     re.IGNORECASE)
 
+# ---- inline statement segments on IF / ELSE / END-IF lines --------------
+
+_COND_HEAD_RE = re.compile(
+    r"^IF\s+(?P<left>[A-Za-z][A-Za-z0-9-]*|[-+]?\d+(?:\.\d+)?"
+    r"|'[^']*'|\"[^\"]*\")\s+"
+    r"(?P<not>NOT\s+)?(?P<op>=|<>|<=|>=|<|>)\s+"
+    r"(?P<right>[A-Za-z][A-Za-z0-9-]*|[-+]?\d+(?:\.\d+)?"
+    r"|'[^']*'|\"[^\"]*\")", re.IGNORECASE)
+_DATA_VERB_START_RE = re.compile(
+    r"\b(MOVE|COMPUTE|ADD|SUBTRACT|MULTIPLY|DIVIDE)\b", re.IGNORECASE)
+_INLINE_NESTED_RE = re.compile(r"\bIF\b", re.IGNORECASE)
+_TRANSFER_RE = re.compile(r"^(GO\s+TO|ALTER|PERFORM)\b", re.IGNORECASE)
+
+
+def _find_kw_positions(seg: str, kw: str) -> int:
+    """First word-boundary occurrence of kw outside string literals,
+    or -1."""
+    quote = None
+    i = 0
+    pat = re.compile(r"\b%s\b" % kw, re.IGNORECASE)
+    while i < len(seg):
+        ch = seg[i]
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in ("'", '"'):
+            quote = ch
+        else:
+            m = pat.match(seg, i)
+            if m:
+                return i
+        i += 1
+    return -1
+
+
+def _period_position(seg: str) -> int:
+    """Position of the sentence-terminating period (quote-aware, decimal
+    safe), or -1."""
+    quote = None
+    i = 0
+    while i < len(seg):
+        ch = seg[i]
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in ("'", '"'):
+            quote = ch
+        elif ch == "." and (i + 1 == len(seg) or seg[i + 1] in " \t"):
+            return i
+        elif ch == "*" and i + 1 < len(seg) and seg[i + 1] == ">":
+            return i
+        i += 1
+    return -1
+
+
+def _verb_segments(region: str, base_col: int) -> Tuple[List[Tuple[int, str]], Optional[str]]:
+    """Split a text region into verb-led statement segments.
+    Returns ([(col, text)], error)."""
+    segs: List[Tuple[int, str]] = []
+    starts = [m.start() for m in
+              _DATA_VERB_START_RE.finditer(region)]
+    if not starts:
+        return [], None
+    for idx, st in enumerate(starts):
+        end = starts[idx + 1] if idx + 1 < len(starts) else len(region)
+        text = region[st:end].strip()
+        if text:
+            segs.append((base_col + st, text))
+    return segs, None
+
+
+def parse_if_line(stripped: str) -> dict:
+    """Parse one content line starting with IF into its condition plus
+    inline THEN / ELSE / continuation statement segments (column-
+    preserving). Returns {error} when the construct cannot be
+    established (e.g. nested inline IF)."""
+    m = _COND_HEAD_RE.match(stripped)
+    if not m:
+        return {"error": "condition form cannot be established"}
+    left = _cond_operand(m.group("left"))
+    right = _cond_operand(m.group("right"))
+    if left is None or right is None:
+        return {"error": "condition form cannot be established"}
+    cond = {"left": left, "right": right,
+            "op": ("NOT " if m.group("not") else "") + m.group("op")}
+    cond_src = stripped[m.start():m.end()]
+    rest = stripped[m.end():]
+    else_pos = _find_kw_positions(rest, "ELSE")
+    endif_pos = _find_kw_positions(rest, "END-IF")
+    period_pos = _period_position(rest)
+    limit = len(rest)
+    for pos in (else_pos, endif_pos, period_pos):
+        if pos >= 0:
+            limit = min(limit, pos)
+    then_region = rest[:limit]
+    result = {
+        "cond": cond, "cond_text": cond_src,
+        "cond_col": 8 + m.start("left"),
+        "then": [], "else": [], "cont": [],
+        "else_present": False, "endif_col": None,
+        "error": None,
+    }
+    # a nested inline IF inside the THEN region cannot be branched
+    # reliably on one line: refuse rather than guess
+    if _INLINE_NESTED_RE.search(then_region):
+        return {"error": "nested inline IF is not interpreted"}
+    # all output columns use the scanner's source-column convention
+    # (stripped-line offset + 8), matching inline sentence cols
+    then_segs, err = _verb_segments(then_region, m.end() + 8)
+    if err:
+        return {"error": err}
+    result["then"] = then_segs
+    if else_pos >= 0:
+        result["else_present"] = True
+        e_limit = endif_pos if endif_pos > else_pos else \
+            (period_pos if period_pos > else_pos else len(rest))
+        else_region = rest[else_pos + 4:e_limit]
+        if _INLINE_NESTED_RE.search(else_region):
+            return {"error": "nested inline IF is not interpreted"}
+        else_segs, err = _verb_segments(else_region,
+                                        m.end() + else_pos + 4 + 8)
+        if err:
+            return {"error": err}
+        result["else"] = else_segs
+    if endif_pos >= 0:
+        result["endif_col"] = m.end() + endif_pos + 8
+        c_limit = period_pos if period_pos > endif_pos else len(rest)
+        cont_region = rest[endif_pos + 6:c_limit]
+        cont_segs, err = _verb_segments(cont_region,
+                                        m.end() + endif_pos + 6 + 8)
+        if err:
+            return {"error": err}
+        result["cont"] = cont_segs
+    return result
+
+
+def parse_tail_line(stripped: str, keyword: str) -> List[Tuple[int, str]]:
+    """Inline statement segments after ELSE or END-IF at line start."""
+    klen = len(keyword)
+    if not stripped[:klen].upper() == keyword.upper():
+        return []
+    rest = stripped[klen:]
+    period_pos = _period_position(rest)
+    if period_pos >= 0:
+        rest = rest[:period_pos]
+    segs, _ = _verb_segments(rest, klen + 8)
+    return segs
+
+
+_COND_OPERAND_RE = re.compile(
+    r"^(?P<q>%s\s+(?:OF|IN)\s+%s)(?=\s|$)|^(?P<str>\"[^\"]*\"|'[^']*')"
+    r"|^(?P<ident>%s)(?=\s|$)|^(?P<num>[+-]?\d+(?:\.\d+)?)(?=\s|$)"
+    % (_WORD, _WORD, _WORD), re.IGNORECASE)
+
+
+def _cond_operand(tok: str) -> Optional[dict]:
+    """Condition operand: identifier (possibly OF/IN-qualified), numeric
+    literal, or string literal."""
+    tok = tok.strip()
+    if _FIGURATIVE_RE.match(tok):
+        return {"kind": "figurative", "text": tok.upper()}
+    m = _COND_OPERAND_RE.match(tok)
+    if not m:
+        return None
+    if m.group("q"):
+        parts = m.group("q").split()
+        return {"kind": "identifier", "name": parts[0],
+                "parent": parts[-1].upper(), "text": tok}
+    if m.group("str"):
+        return {"kind": "literal", "text": m.group("str")}
+    if m.group("ident"):
+        return {"kind": "identifier", "name": m.group("ident"),
+                "parent": None, "text": tok}
+    return {"kind": "literal", "text": m.group("num")}
+
 
 def _parse_condition(src: str) -> Optional[dict]:
     toks = src.strip()
@@ -740,8 +1016,8 @@ def _parse_condition(src: str) -> Optional[dict]:
         r"(?P<right>\S.*)$", toks)
     if not m:
         return None
-    left = _operand_token(m.group("left").strip())
-    right = _operand_token(m.group("right").strip())
+    left = _cond_operand(m.group("left").strip())
+    right = _cond_operand(m.group("right").strip())
     if left is None or right is None:
         return None
     return {"left": left, "right": right,

@@ -2084,3 +2084,40 @@ button {
   font-family: var(--mono);
 }
 .lg-name-btn:hover { text-decoration: underline; }
+
+/* ---- decision paths (Milestone 7) ---- */
+.dec-list { display: grid; gap: var(--sp-2); }
+.dec-card {
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--state-blue);
+  border-radius: var(--r-sm);
+  background: var(--surface-1);
+}
+.dec-card.open { border-left-color: var(--accent); }
+.dec-head {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+}
+.dec-head:hover { background: var(--surface-2, rgba(255, 255, 255, 0.03)); }
+.dec-cond { font-family: var(--mono); font-size: var(--fs-1); }
+.dec-noelse { color: var(--ink-dim); font-size: var(--fs-0); font-style: italic; }
+.dec-body {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+.dec-row { display: grid; gap: var(--sp-1); }
+.dec-operands { font-family: var(--mono); font-size: var(--fs-1); display: flex; gap: var(--sp-1); align-items: baseline; }
+.dec-nested {
+  margin-left: var(--sp-4);
+  padding-left: var(--sp-3);
+  border-left: 1px dashed var(--line);
+  display: grid;
+  gap: var(--sp-2);
+}

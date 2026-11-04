@@ -226,6 +226,28 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   bodies and malformed statements are listed with reasons instead of
   being rendered as operations.
 
+## 7e. Milestone 7 interface additions (decision paths)
+
+- Programs with decision structure gain a DECISION PATHS section: a
+  coverage line (decisions · with-ELSE · nested) and one card per
+  top-level decision — IF chip, line, the condition text (operand
+  chips), an explicit "no ELSE in source" marker when the source has no
+  ELSE, and the analysis origin (parsed/scanned).
+- Selecting a decision expands it in place: the condition evaluated
+  (operand chips + source evidence), THEN operations and ELSE
+  operations rendered as the same operation cards as DATA FLOW (status,
+  options, guards, provenance), nested decisions indented beneath their
+  parent (recursively selectable), and "after the decision" — the
+  convergence operation with its evidence line.
+- Decision boundaries that could not be established (unterminated IF,
+  EVALUATE bodies, GO TO / PERFORM / ALTER transfers) are listed under
+  "decision boundaries not established" with their reasons — never
+  rendered as branches.
+- Selection is program-scoped and resets when switching programs.
+  Branch membership comes from the same operation records as M6 (no
+  second model); no flowchart is drawn — evidence, ordering and source
+  navigation first.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

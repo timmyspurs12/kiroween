@@ -127,6 +127,37 @@ bodies, malformed statements and unterminated scopes are recorded
 unsupported with evidence, never interpreted. Project envelope grows
 additively (schema 3 → 4: `cross_file.dataflow`).
 
+### Decision-path analysis (Milestone 7)
+
+On top of the statement model, project analysis builds a deterministic
+decision-path model answering: which condition is evaluated, which
+operands participate, which operations belong to the THEN branch and to
+the ELSE branch, how decisions nest, where the branches converge, and
+which supported operation follows the decision. Decisions reference the
+M6 operation and condition records by their unchanged ids (`op_id`,
+`cond_id`) — branch membership is linked in both directions, and every
+M6 risk calculation, threshold and finding is untouched. Parsed
+(frozen-subset) programs derive decisions from the parser's IF AST
+(nesting and spans come from the grammar, never from reformatted text);
+COPY-using programs track IF / ELSE / END-IF scoping line by line in the
+scanner, attributing inline statements by their exact column ranges.
+An ELSE branch is recorded only when the source has one — none is ever
+invented; nesting follows the innermost controlling decision; the
+convergence point is the first supported operation after END-IF, joined
+through explicit `joins`/`decides`/`continues` graph edges and a
+`sequence` (source order) per program. Conditions that cannot be parsed
+are unsupported; unterminated IF scopes, EVALUATE bodies (whose
+statements are never presented as branch members), GO TO / ALTER /
+PERFORM transfers and orphan ELSE / END-IF are recorded with evidence,
+never interpreted. Summaries are source-backed strings only — "when
+WS-TOTAL is greater than 1000, the THEN branch writes ZERO to WS-COUNT"
+— no business meaning is inferred. The UI DECISION PATHS section lets a
+developer select a condition and read the evidence: branch operations,
+nested decisions, convergence, and what could not be established.
+Project envelope grows additively (schema 4 → 5: `dataflow.decisions`,
+`dataflow.sequence`, project decision totals); single-file output is
+unchanged.
+
 ### Command-line use (batch / CI)
 
 ```bash
@@ -166,15 +197,17 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 107 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 205 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
-# envelope shape, HTTP API contract, static serving, path-traversal guard
+# envelope shape, HTTP API contract, static serving, path-traversal guard,
+# logical model + copybook provenance, cross-file interfaces/mappings,
+# statement-level data flow, and decision-path analysis
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**107 passed in ~2.3 s**.
+**205 passed in ~2.9 s**.
 
 ## API
 
@@ -239,6 +272,11 @@ DESIGN.md             design evidence: skills, tokens, UX decisions, review
   inserts a 4-space indent, Enter auto-indents, Escape releases focus) — no
   find/replace, multi-cursor, or bracket matching. A heavyweight editor
   dependency was evaluated and deliberately not added for this milestone.
+- Decision-path analysis (Milestone 7) is structural, not a CFG engine: no
+  reachability, equivalence or execution claims; EVALUATE is never
+  interpreted (its bodies are not presented as IF branches); ELSE is never
+  assumed; GO TO / ALTER / PERFORM transfers and unparseable conditions stop
+  the path and are recorded unsupported instead of guessed.
 - `frontend/node_modules/` is not persisted in this workspace; run
   `npm install` before rebuilding the frontend. `app/web_dist/` is committed
   so the product runs without Node.
