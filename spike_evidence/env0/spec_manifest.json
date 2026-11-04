@@ -1,0 +1,121 @@
+{
+  "manifest_identity": {
+    "artifact": "env0/spec_manifest.json",
+    "precondition": "P0 — dependency acquisition, extraction, verification, and hash anchoring (E-11 §0.4v2, as amended by the P0 directive of 2026-11-04)",
+    "executed_at": "2026-11-04",
+    "executor": "NecroSpec continuation agent (Arena session, branch arena/c6d3bcf5-kiroween)",
+    "p0_result": "P0 PASS",
+    "p0_scope_note": "P0 PASS attests dependency availability, section presence, verbatim extraction, and mechanically computed hashes ONLY. It is not evidence that any experiment, gate, or runtime check passed. All experimental gates remain NOT EXECUTED."
+  },
+  "source_availability": {
+    "origin": "In-session conversation transcript (2026-11-04). No original document files exist anywhere in the workspace or repository.",
+    "source_nature": "TRANSCRIPT-DERIVED COPY for every document — recorded as required. None of the six documents is an original file.",
+    "transcription_integrity_limitation": "L-1: The agent transcribed each document from the session transcript into files. Fidelity was maximized (no paraphrase, no normalization, no reflow), but byte-level equality with the originally emitted transcript messages cannot be independently verified because the transcript store is not byte-accessible from the sandbox. The transcript remains the appeal authority for any transcription dispute; the extracted files are the working anchors.",
+    "original_source_stream_hashes": null,
+    "original_source_stream_hash_reason": "Original sources are conversation messages, not byte-accessible streams; per directive 6, hashes are reported only where actually computed (i.e., over the six extracted files and SHA256SUMS). No digest value in this manifest is fabricated."
+  },
+  "extraction": {
+    "method": "Verbatim manual transcription from the session transcript via the write_file tool; content boundaries fixed by convention below; no normalization, no reflow, no re-typing from memory, no substitution of superseding text into earlier documents.",
+    "boundary_convention": "Each revN document = its Markdown H1 title line through its final status line, inclusive. Conversational preambles preceding the H1 are excluded and are not part of any document. rev4_extract.md = Rev 4 sections 2.2.2 and 3.1-3.3 only, verbatim, contiguous, original headings preserved (the Rev 4 section-3 preamble paragraph before heading 3.1 is outside the required range and excluded).",
+    "as_emitted_rule": "Extracted files are frozen as-emitted: known-later corrections (e.g., V3/V4 alternate bytes 06 67 00 0C -> 06 66 70 0C) are NOT retro-applied; they live in the superseding errata files, all of which are included. The corpus is consumed in supersession order.",
+    "trailing_newline": "Each extracted file is terminated by a single trailing newline (convention of the write_file tool)."
+  },
+  "documents": [
+    {
+      "file": "rev4_extract.md",
+      "identity": "NecroSpec Rev 4 — Phase-0 Technical Spike Execution Specification (Rev 4), session 2026-11-04",
+      "required_sections": ["2.2.2 (lexical rules + Lark LALR(1) EBNF grammar)", "3.1 (positive COBOL fixtures #1-#12)", "3.2 (negative COBOL fixtures #13-#18)", "3.3 (native C fixtures #19-#20)"],
+      "sections_present": true,
+      "sha256": "d1f0aa97a7805663ef3a47dbe209c2f0b36ee8f8ee012926746550a6790b5bad",
+      "bytes": 22036
+    },
+    {
+      "file": "rev5.md",
+      "identity": "NecroSpec — Phase-0 Technical Spike Execution Specification (Rev 5), session 2026-11-04",
+      "required_sections": ["1 (change log)", "2 (2.1-2.6)", "3 (3.1-3.5)", "4 (4.1-4.4)", "5 (5.1-5.3)", "6", "7 (7.0-7.4)", "8", "9", "10", "11", "12", "13"],
+      "sections_present": true,
+      "sha256": "3643a3c0596cc3bdffb2df407ab7db3dcfcd83550282a1505fd1c2ec8549894e",
+      "bytes": 71478
+    },
+    {
+      "file": "rev6_errata.md",
+      "identity": "NecroSpec Rev 6 — Targeted Final Errata (E-0..E-7 + Deliverables 1-6), session 2026-11-04",
+      "required_sections": ["E-0 (doc identity/dependency)", "E-1 (sandbox /bin)", "E-2 (x32 seccomp)", "E-3 (EVILMOD v3 + schema v3)", "E-4 (vector table v2)", "E-5 (covered by E-0)", "E-6 (vector ownership + outcome classes)", "E-7 (loader security window)"],
+      "sections_present": true,
+      "sha256": "386920fa161c85b56d7c1ae90b41f0b3de12cf2149727bef4e7847d3330b1616",
+      "bytes": 39942
+    },
+    {
+      "file": "rev61_errata.md",
+      "identity": "NecroSpec Rev 6.1 — Final Four-Point Errata (E-8..E-11 + Deliverables 1-6), session 2026-11-04",
+      "required_sections": ["E-8 (EVILMOD v3.1, packed-access rule)", "E-9 (V6 ownership)", "E-10 (PICTURE audit + V5 sentinels)", "E-11 (P0 precondition)"],
+      "sections_present": true,
+      "sha256": "5d7a65b2b4a96731df3fd4196282b33aef06e1c9866bfae43fb9dfc06936aab8",
+      "bytes": 21867
+    },
+    {
+      "file": "rev62_errata.md",
+      "identity": "NecroSpec Rev 6.2 — Final Two-Item Correction (E-12, E-13 + Deliverables 1-6), session 2026-11-04",
+      "required_sections": ["E-12 (read_proc_slice oerr init + call-site audit)", "E-13 (26-row field PICTURE audit table + error register)"],
+      "sections_present": true,
+      "sha256": "beb8bf2e190b01523e8603d696aadd385f0d89e6651a972efb5d3c5145c42f4c",
+      "bytes": 13915
+    },
+    {
+      "file": "rev63_errata.md",
+      "identity": "NecroSpec Rev 6.3 — Final Three-Point Errata (E-14..E-16 + matrix/cross-ref/verdict), session 2026-11-04",
+      "required_sections": ["E-14 (open_fail_flags bit->slot mapping)", "E-15 (V3/V4 alternate bytes 06 66 70 0C)", "E-16 (26-row count convention)"],
+      "sections_present": true,
+      "sha256": "e868810c17d4259914bcd4c4c7c015020d848481d27c3a27daae1e57ccf68e3d",
+      "bytes": 7557
+    }
+  ],
+  "sha256sums_file": {
+    "file": "SHA256SUMS",
+    "covers": ["rev4_extract.md", "rev5.md", "rev6_errata.md", "rev61_errata.md", "rev62_errata.md", "rev63_errata.md"],
+    "sha256_of_sha256sums": "3955353683f14f8cfb139b88e14a80e95687a79039200a01e84398657257450f",
+    "note": "Generated mechanically by sha256sum over the six extracted files; every digest above was computed, never hand-entered."
+  },
+  "supersession_map": {
+    "purpose": "Consumption order for the corpus; later items supersede earlier text at the named locations.",
+    "chain": [
+      "Grammar + fixtures #1-#19: rev4_extract.md only; never superseded (Rev 5 SS2.2/SS3.1-3.2 carry them forward normatively).",
+      "Fixture #20 EVILMOD.c: rev4 (v1) -> rev5 SS3.3 (v2) -> rev6 E-3 (v3) -> rev61 E-8 (v3.1) -> rev62 E-12 (read_proc_slice body only). Current text: v3.1 + E-12.",
+      "Vector table: rev5 SS2.5 -> rev6 E-4 (recomputed primaries) -> rev61 E-10 (V5 sentinels 12 34 5F) -> rev62 E-13 (26-row field table; pad-nibble correction) -> rev63 E-15 (V3/V4 alt bytes 06 66 70 0C).",
+      "bwrap profile: rev5 SS4.3-4.4 -> rev6 E-1 (adds --symlink usr/bin /bin).",
+      "Seccomp policy: rev5 SS6 -> rev6 E-2 (x32 gate documentation, modify_ldt, 4F-9).",
+      "SS5.1a consumer checks: rev6 E-3 -> rev62 E-12 amendment -> rev63 E-14 (bit->slot mapping supersedes bit-as-index rule).",
+      "P0 precondition: rev6 E-0 SS0.4 -> rev61 E-11 (mandatory fail-stop) -> executed by this manifest.",
+      "Field-audit count: rev62 '24-field' phrasing -> rev63 E-16 (26-row convention)."
+    ],
+    "known_corrected_in_place_items": "Old V3/V4 alternate bytes (06 67 00 0C) remain visible in rev6_errata.md (4 occurrences) and rev62_errata.md (2 occurrences) exactly as emitted; superseded by rev63 E-15. This is intended under the as_emitted_rule."
+  },
+  "pre_execution_checks": [
+    {
+      "id": "PEC-1",
+      "statement": "open_fail_flags bits 0,1,2,4 map to open_err[]/read_err[] slots 0,1,2,3 respectively (slot = bit==4 ? 3 : bit); unsupported probe-bit values are rejected; error arrays are never indexed directly by an arbitrary flag bit; open_err[4] does not exist.",
+      "status": "REGISTERED — producer-verified by static text inspection of anchored rev61_errata.md (call-site bits 0,1,2 -> slots 0,1,2; bit 4 -> slot 3). Runtime enforcement is an Exp-2/Exp-4 ingestion duty.",
+      "detail_file": "spec/preexec_checks.md"
+    },
+    {
+      "id": "PEC-2",
+      "statement": "read_err[slot]==0 means no read syscall error was recorded; nonzero is the captured errno; there is no separate read-failure flag; if the corresponding open-failure bit is set, read_err[slot] must be zero.",
+      "status": "REGISTERED — E-12 full-initialisation line verified present in anchored rev62_errata.md (stale-errno hazard removed). Runtime confirmation occurs only during Exp-2/Exp-4.",
+      "detail_file": "spec/preexec_checks.md"
+    }
+  ],
+  "limitations": [
+    "L-1 (transcription fidelity): sources are transcript-derived; original-stream hashes unattainable; transcript remains the appeal authority (see source_availability).",
+    "L-2 (git state): the six extracts, SHA256SUMS, preexec_checks.md, and this manifest were created in the repository working tree (spike_evidence/) and are not git-committed; persistence is by workspace snapshot. Committing is available on request and is not required for P0.",
+    "L-3 (scope): P0 created only specification extracts, hash manifests, and associated evidence records. No application or fixture source was modified; nothing was compiled; no packages installed; no containers built; no arithmetic, FFI, parser, state-reset, or sandbox experiments were run; nothing deployed.",
+    "L-4 (gates): Env-0 build/installation steps, Exp-1..Exp-4, and all five gates remain NOT EXECUTED; P0 PASS is a specification-integrity result only."
+  ],
+  "p0_checklist": {
+    "directive_1_dependency_inventory": "COMPLETE — all six controlling documents acquired (see documents[]).",
+    "directive_2_source_availability": "COMPLETE — all required sections present; all sources recorded as transcript-derived copies; nothing recreated from memory or paraphrased; no ABORTED-P0 condition found.",
+    "directive_3_extract_and_anchor": "COMPLETE — six required extraction outputs created; SHA-256 computed mechanically for each extracted file (sha256sum); SHA256SUMS + this manifest written; no digest prepopulated or fabricated; original-stream hashes recorded as null with reason.",
+    "directive_4_protocol_semantics": "COMPLETE — PEC-1 and PEC-2 registered as pre-execution checks (preexec_checks.md + this manifest).",
+    "directive_5_execution_boundary": "RESPECTED — see limitations L-3/L-4.",
+    "directive_6_final_report": "DELIVERED in the session report accompanying this manifest."
+  }
+}

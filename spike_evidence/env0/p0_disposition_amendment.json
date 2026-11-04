@@ -1,0 +1,59 @@
+{
+  "amendment_identity": {
+    "artifact": "env0/p0_disposition_amendment.json",
+    "issued": "2026-11-04",
+    "amends": "env0/spec_manifest.json (disposition fields only: p0_result, p0_scope_note, p0_checklist framing, limitations register) and the P0 final report delivered in session on 2026-11-04",
+    "authority": "User directive 'NecroSpec — P0 Provenance Disposition Correction' (2026-11-04), applied against the original fail-stop P0 requirements (E-11 §0.4v2, rev61_errata.md, steps 4 and 6)",
+    "edit_policy": "Append-only amendment. Nothing in the existing evidence corpus (six extracts, SHA256SUMS, spec_manifest.json, preexec_checks.md) was modified; their preservation was re-verified by 'sha256sum -c SHA256SUMS' immediately before this record was written (6/6 OK)."
+  },
+  "corrected_p0_disposition": {
+    "overall_result": "ABORTED-P0 — SOURCE PROVENANCE INCOMPLETE",
+    "basis": "E-11 §0.4v2 step 4 requires SHA-256 over each ORIGINAL document stream in addition to each extracted file; step 6 is fail-stop: 'If any dependency cannot be obtained ... or any hash cannot be computed: STOP.' The six original sources are conversation-transcript messages and were not byte-accessible from the sandbox; zero original-stream hashes could be computed; consequently no byte-level comparison of originals against extracts was possible. The step-6 STOP condition is met. The previously reported 'P0 PASS' disposition is hereby SUPERSEDED.",
+    "component_results": {
+      "extracted_document_integrity": {
+        "status": "COMPLETED",
+        "detail": "Six extracts created; SHA-256 for each computed mechanically (sha256sum) and recorded in SHA256SUMS; integrity re-verified 2026-11-04 (6/6 OK); manifest cross-check MATCH x6. These artifacts and their hashes remain valid as working anchors of the extracted corpus and are NOT invalidated by this amendment."
+      },
+      "original_source_provenance_verification": {
+        "status": "INCOMPLETE — BLOCKING",
+        "detail": "Zero original-stream hashes exist; none may be invented. No byte-level equality attestation between original messages and extracts is possible today. spec_manifest.json original_source_stream_hashes remains null with its recorded reason."
+      },
+      "section_presence_verification": {
+        "status": "COMPLETED (transcript level)",
+        "detail": "All required sections of all six documents verified present in transcript content. Byte-level confirmation is deferred to provenance closure and is not claimed."
+      },
+      "pre_execution_checks_PEC1_PEC2": {
+        "status": "REGISTERED (unchanged)",
+        "detail": "Registration and static producer-verification stand; runtime enforcement remains an Exp-2/Exp-4 duty, not executed."
+      }
+    },
+    "source_classification": "PRESERVED UNCHANGED: all six sources remain classified TRANSCRIPT-DERIVED COPY; source_nature and the extraction boundary/as-emitted conventions in spec_manifest.json are unaffected by this amendment.",
+    "integrity_statements": [
+      "No original-source hash was invented, estimated, or recorded anywhere.",
+      "No claim of byte-identical extraction is made or implied; fidelity of the transcription is asserted at best-effort level only, with the transcript as appeal authority.",
+      "The six extracted files, their hashes, SHA256SUMS, and spec_manifest.json are preserved byte-for-byte."
+    ]
+  },
+  "superseded_claims": [
+    "spec_manifest.json p0_result 'P0 PASS' — superseded by 'ABORTED-P0 — SOURCE PROVENANCE INCOMPLETE' (field left in place unedited per append-only policy; this amendment is controlling).",
+    "spec_manifest.json p0_scope_note sentence beginning 'P0 PASS attests dependency availability ...' — superseded; no such attestation of full P0 scope is made.",
+    "P0 final report (session 2026-11-04) section 6 'P0 PASS' and the statement that P0's completion unblocks Env-0 — superseded and WITHDRAWN: Env-0 build/installation steps remain BLOCKED under E-11 step 6 until remediation and a P0 re-run recorded green."
+  ],
+  "closure_requirements": {
+    "purpose": "Exactly what source material is required to close the outstanding provenance limitation (user directive point 6).",
+    "required_material": "Byte-accessible originals of the six controlling documents: Rev 4 (at minimum the byte ranges for §2.2.2 and §3.1–§3.3, plus unambiguous range delimiters), Rev 5 (§1–§13), Rev 6, Rev 6.1, Rev 6.2, Rev 6.3 — each as originally emitted. Two acceptance channels:",
+    "channel_A_platform_export_preferred": "A platform-origin transcript export (any lossless container: JSON, HTML, Markdown, or plain text) containing the six messages verbatim, delivered into the workspace (proposed path spike_evidence/spec/originals/). Requirements: (i) byte-exact message content preservation — no smart-quote substitution, whitespace collapsing, rewrapping, truncation, or rendering normalization; (ii) unambiguous per-message delimitation so byte ranges can be extracted; (iii) export tool/version identifier recorded for reproducibility.",
+    "channel_B_user_attested_fallback": "User-attested file copies of the six documents with an explicit recorded attestation that they are faithful copies of the originally emitted messages. This yields a weaker provenance grade; closure under Channel B would be recorded 'P0 PASS (provenance: user-attested)', not full platform provenance. Acceptability of the weaker grade is the user's decision.",
+    "closure_procedure": "Per document: (1) extract the declared byte range using the recorded boundary convention (H1 title line through final status line; rev4_extract: §2.2.2 and §3.1–§3.3 ranges); (2) compute SHA-256 over the original range; (3) byte-diff original range against the existing extract; (4) record per-document result (identical-within-declared-boundaries | divergence list). Then: extend SHA256SUMS to cover originals; write a closure amendment record; re-issue the P0 disposition ('P0 PASS' if all six compare identical within boundaries, else reconcile first). If any divergence is found, the original/export is authoritative: extracts are corrected only via superseding records with recomputed hashes — never silently edited.",
+    "not_required_for_closure": "No re-extraction from memory; no modification of the existing corpus; no execution of any experiment."
+  },
+  "limitations_register": {
+    "D-1": "BLOCKING DEFICIENCY (elevated from limitation L-1): original transcript streams not byte-accessible; original-source hashes uncomputed; extracts not independently comparable to originals. Blocks P0 closure and, via E-11 step 6, blocks Env-0.",
+    "L-2": "Corpus and amendment are workspace-snapshot persisted and not git-committed (committing available on request; not required for P0).",
+    "L-3": "Scope: this turn created exactly one artifact (this amendment). No application/fixture code modified; nothing compiled, installed, built, run, or deployed.",
+    "L-4": "All experimental gates (Env-0, Exp-1..Exp-4) remain NOT EXECUTED; PEC-1/PEC-2 runtime enforcement remains pending.",
+    "L-5": "Disposition authority: wherever this amendment conflicts with spec_manifest.json or the 2026-11-04 P0 final report, this amendment controls. Checksum coverage note: SHA256SUMS covers the six spec extracts; the closure procedure extends coverage to originals and env0 records."
+  },
+  "gates": "Env-0: ABORTED-P0 — SOURCE PROVENANCE INCOMPLETE (blocked under E-11 step 6). Exp-1, Exp-2, Exp-3, Exp-4: NOT EXECUTED. Nothing has passed.",
+  "next_permitted_action": "Deliver the closure material per Channel A (or, if accepted, Channel B) into the workspace. Upon delivery and an explicit user authorization, execute the closure_procedure above and re-issue the P0 disposition. Until closure: no Env-0 steps, no compilation, no experiments; no further P0 work beyond this amendment."
+}
