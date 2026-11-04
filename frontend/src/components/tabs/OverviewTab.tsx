@@ -158,6 +158,29 @@ export function OverviewTab({
               </span>
             </dd>
           </dl>
+          {analysis.coverage && (
+            <dl className="ov-kv" style={{ marginTop: "var(--sp-2)" }}>
+              <dt>Coverage</dt>
+              <dd>
+                {analysis.coverage.statements_analyzed}/
+                {analysis.coverage.statements_total} statements analyzed
+              </dd>
+              <dt>Needs human review</dt>
+              <dd>{analysis.coverage.needs_human_review} finding(s)</dd>
+              <dt>Model limits</dt>
+              <dd>
+                {analysis.assumptions?.length ?? 0} on record
+                <span
+                  title={(analysis.assumptions ?? [])
+                    .map((a) => `${a.topic}: ${a.detail}`)
+                    .join("\n")}
+                  style={{ color: "var(--text-faint)", marginLeft: 6, cursor: "help" }}
+                >
+                  (hover for the list)
+                </span>
+              </dd>
+            </dl>
+          )}
           {sev.warning > 0 && (
             <p className="ov-note">
               Warnings are possibilities established from declared PICTUREs

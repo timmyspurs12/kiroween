@@ -10,6 +10,25 @@ export interface Diagnostic {
   hint: string | null;
   context_line: string | null;
   evidence: string | null;
+  /** violation | risk | note | unsupported — what kind of knowledge this is */
+  classification: string;
+  /** machine-readable quantities (bounds, capacities, mode) */
+  detail: Record<string, unknown> | null;
+  /** deterministic traceable identity */
+  finding_id: string;
+}
+
+export interface Coverage {
+  statements_total: number;
+  statements_analyzed: number;
+  findings: { violation: number; risk: number; note: number };
+  needs_human_review: number;
+}
+
+export interface Assumption {
+  id: string;
+  topic: string;
+  detail: string;
 }
 
 export interface SemanticSymbol {
@@ -97,6 +116,9 @@ export interface AnalysisResponse {
   symbols: SemanticSymbol[] | null;
   references: SemanticRef[] | null;
   semantic_counts: SemanticCounts | null;
+  coverage: Coverage | null;
+  assumptions: Assumption[] | null;
+  schema_version: number;
   summary: {
     ok: boolean;
     errors: number;

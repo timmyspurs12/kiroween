@@ -99,6 +99,7 @@ def _respond(meta: dict, source, tokens: List[Token], ast, diags: List[Diagnosti
 
     return {
         "meta": meta,
+        "schema_version": 2,  # platform contract; see README (architecture)
         "layers": layer_status,
         "diagnostics": [d.to_json() for d in ordered],
         "tokens": [t.to_json() for t in (tokens or [])],
@@ -106,5 +107,7 @@ def _respond(meta: dict, source, tokens: List[Token], ast, diags: List[Diagnosti
         "symbols": products.get("symbols") if products else None,
         "references": products.get("references") if products else None,
         "semantic_counts": products.get("counts") if products else None,
+        "coverage": products.get("coverage") if products else None,
+        "assumptions": products.get("assumptions") if products else None,
         "summary": summary,
     }

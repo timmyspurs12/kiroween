@@ -12,6 +12,24 @@ precision loss, discarded signs, SPACES moved into numeric items, and literal
 zero divisors — each with a computed evidence trail grounded in the declared
 PICTUREs and literal values.
 
+Every finding is classified (**violation** = proven against declared rules
+and evidence, **risk** = possibility needing human investigation, **note**,
+**unsupported** = construct outside the analyzable subset), carries a
+deterministic `finding_id` and machine-readable quantities (`detail`), and
+every analysis publishes `coverage` (statements analyzed, findings by class,
+what needs human review) and `assumptions` (the model's recorded limits).
+This is the structured contract (`schema_version` 2) future multi-file and
+migration-readiness capabilities build on.
+
+### Command-line use (batch / CI)
+
+```bash
+python3 app/cli.py analyze src/*.cbl            # human-readable findings
+python3 app/cli.py analyze src/*.cbl --json     # full structured envelopes
+# exit 0 = no violations, 1 = violations found, 2 = usage/I-O error
+# warnings (risks) never fail a run — they are review items, not proofs
+```
+
 Everything in this repository runs locally with **zero third-party runtime
 dependencies**: the API server is Python 3 stdlib; the frontend is a static
 Vite/React build served by that same process.
@@ -42,7 +60,7 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 63 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 80 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
@@ -50,7 +68,7 @@ python3 -m pytest app/tests/ -v
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**63 passed in ~1.2 s**.
+**80 passed in ~1.5 s**.
 
 ## API
 
@@ -72,6 +90,7 @@ authoritative backend token stream once an analysis exists.
 ```
 app/
   server.py           stdlib HTTP server: JSON API + static host for web_dist
+  cli.py              scriptable engine access (batch/CI), stdlib only
   necro/              the engine (L1 preflight, L2 lexer, L3 grammar,
                       L4 semantic AST, fixtures, diagnostics registry)
   tests/              pytest suite (engine + HTTP contract)

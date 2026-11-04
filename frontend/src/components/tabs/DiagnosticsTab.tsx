@@ -106,7 +106,9 @@ export function DiagnosticsTab({
               </span>
             )}
             {d.context_line && <span className="diag-context">{d.context_line}</span>}
-            <span className="diag-layer-tag">layer: {d.layer}</span>
+            <span className="diag-layer-tag">
+              layer: {d.layer} · {d.classification} · {d.finding_id}
+            </span>
           </button>
         ))}
       </div>

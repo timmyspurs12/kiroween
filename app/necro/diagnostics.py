@@ -4,6 +4,7 @@ Stable diagnostic codes follow the frozen Rev6.4.2 corpus (Rev5 §2.2/§2.3,
 Rev4 §2.2.2). Codes not named in the corpus are marked [EXT] and are
 agent-stable extensions, never corpus codes.
 """
+import hashlib
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
@@ -46,6 +47,14 @@ SEM_SIZE_ERROR_GUARD = "SEM_SIZE_ERROR_GUARD"        # [EXT] overflow guarded (i
 
 LAYER_SEMANTIC = "Semantic"
 
+# Finding classification (platform model): every diagnostic states what kind
+# of knowledge it carries, so consumers can separate proven violations from
+# possibilities, notes and unsupported constructs.
+CLASS_VIOLATION = "violation"    # proven: definite against declared rules/evidence
+CLASS_RISK = "risk"              # possibility: needs human investigation
+CLASS_NOTE = "note"              # informational, no action required
+CLASS_UNSUPPORTED = "unsupported"  # construct/frame outside the supported subset
+
 SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 SEVERITY_INFO = "info"
@@ -54,6 +63,14 @@ LAYER_PREFLIGHT = "Preflight"
 LAYER_LEXICAL = "Lexical"
 LAYER_GRAMMAR = "Grammar"
 LAYER_AST = "AST"
+
+_LAYER_CLASSIFICATION = {
+    LAYER_PREFLIGHT: CLASS_UNSUPPORTED,
+    LAYER_LEXICAL: CLASS_UNSUPPORTED,
+    LAYER_GRAMMAR: CLASS_UNSUPPORTED,
+    LAYER_AST: CLASS_VIOLATION,
+    LAYER_SEMANTIC: CLASS_RISK,  # overridden per-finding by the semantic layer
+}
 
 # Suggested-correction text per stable code (shown in the diagnostics UI).
 HINTS = {
@@ -94,10 +111,21 @@ class Diagnostic:
     hint: Optional[str] = None
     context_line: Optional[str] = None
     evidence: Optional[str] = None
+    classification: Optional[str] = None
+    detail: Optional[dict] = None
+    finding_id: Optional[str] = None
 
     def __post_init__(self):
         if self.hint is None:
             self.hint = HINTS.get(self.code)
+        if self.classification is None:
+            self.classification = _LAYER_CLASSIFICATION.get(
+                self.layer, CLASS_VIOLATION)
+        # deterministic, stable finding identity for traceability across
+        # runs and (later) multi-file reports
+        if self.finding_id is None:
+            basis = f"{self.code}|{self.line}|{self.col}|{self.message}"
+            self.finding_id = hashlib.sha1(basis.encode("utf-8")).hexdigest()[:12]
 
     def to_json(self) -> dict:
         return asdict(self)

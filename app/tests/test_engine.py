@@ -339,13 +339,19 @@ def test_sign_separate_rules():
 def test_envelope_shape():
     r = analyze(SAMPLES[0]["source"], SAMPLES[0]["filename"])
     # Milestone 2 adds symbols/references/semantic_counts (semantic products)
-    assert set(r.keys()) == {"meta", "layers", "diagnostics", "tokens", "ast",
-                             "symbols", "references", "semantic_counts",
+    assert set(r.keys()) == {"meta", "schema_version", "layers", "diagnostics",
+                             "tokens", "ast", "symbols", "references",
+                             "semantic_counts", "coverage", "assumptions",
                              "summary"}
+    assert r["schema_version"] == 2
     assert set(r["layers"][0].keys()) <= {"layer", "status", "diagnostics"}
     for d in r["diagnostics"]:
         assert set(d.keys()) == {"severity", "code", "message", "line", "col",
-                                 "layer", "hint", "context_line", "evidence"}
+                                 "layer", "hint", "context_line", "evidence",
+                                 "classification", "detail", "finding_id"}
+        assert d["classification"] in ("violation", "risk", "note",
+                                       "unsupported")
+        assert d["finding_id"]
     assert set(r["meta"].keys()) == {"name", "bytes", "lines", "columns_per_line"}
     assert set(r["summary"].keys()) == {
         "ok", "errors", "warnings", "infos", "token_count",

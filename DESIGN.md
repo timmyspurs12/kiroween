@@ -171,6 +171,11 @@ The visual identity is unchanged; the milestone adds information views:
   findings summary that separates established facts from possibilities.
 - New styles reuse the existing tokens only (no new colors); tables and the
   dictionary tree use the same hairline/mono instrument language.
+- Platform model surfaced, not decorated: every diagnostic row states its
+  classification (`violation` / `risk` / `note` / `unsupported`) and
+  traceable `finding_id`; the Overview semantic section states coverage
+  (statements analyzed vs total), how many findings need human review, and
+  the recorded model limits.
 
 ## 8. Skill credit
 
