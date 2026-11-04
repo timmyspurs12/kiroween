@@ -207,6 +207,25 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   copybook-origin findings. Semantic findings involving copybook data
   cite the copybook file:line in the findings list.
 
+## 7d. Milestone 6 interface additions (data flow)
+
+- Programs gain a DATA FLOW (STATEMENTS) section: one card per
+  recognised operation — verb chip, line, status, ROUNDED / ON SIZE
+  ERROR / REMAINDER / mode options, guard chips (IF line + branch),
+  `→ writes` / `← from` operand chips with copybook-origin markers and
+  explicit (unresolved) uncertainty, plus the statement evidence line.
+- Cross-program CALL USING data flow rows show the sending/receiving
+  program (clickable), the argument→parameter pair, and where the value
+  is written/read — or exactly why the trace stops (unresolved
+  declaration, dynamic target).
+- Declaration names in EFFECTIVE DATA are buttons: selecting one opens
+  FIELD FLOW — receives-value-from (with contributors and guards), used
+  by (operations + roles), conditions it controls, and the
+  not-proof-of-runtime note.
+- Coverage adds operation/condition/link counts. Unsupported EVALUATE
+  bodies and malformed statements are listed with reasons instead of
+  being rendered as operations.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

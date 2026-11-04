@@ -305,6 +305,13 @@ export interface CrossFileSection {
   assumptions: { id: string; topic: string; detail: string }[];
   coverage: Record<string, number>;
   logical?: Record<string, LogicalModel>;
+  dataflow?: {
+    schema_note: string;
+    programs: Record<string, DataflowProgram>;
+    cross_program_links: CrossProgramLink[];
+    assumptions: { id: string; topic: string; detail: string }[];
+    coverage: Record<string, number>;
+  };
 }
 
 // ---- logical program data model (Milestone 5) ---------------------------
@@ -374,6 +381,105 @@ export interface LogicalModel {
   unsupported_structures: { structure: string; file: string; line: number | null; reason: string }[];
   unsupported_statements: { structure: string; file: string; line: number; reason: string; text: string }[];
   associations: { copybook: string; via: "direct" | "nested"; chain: string[] }[];
+}
+
+// ---- statement-level data flow (Milestone 6) ----------------------------
+
+export interface FlowDecl {
+  decl_id: string;
+  name: string;
+  file: string | null;
+  line: number | null;
+  col: number | null;
+  origin: "parsed" | "scanned";
+  via_copybooks: string[];
+  byte_length: number | null;
+  picture: string | null;
+  usage: string | null;
+  status: string;
+  level: number | null;
+  sign: string | null;
+  value: string | null;
+  unsupported_reason: string | null;
+}
+
+export interface FlowOperand {
+  role: string;
+  kind: string;
+  name?: string;
+  parent?: string | null;
+  text?: string;
+  resolution?: string;
+  decl?: FlowDecl & { origin_kind?: string };
+  candidates?: RefCandidate[];
+}
+
+export interface DataflowOp {
+  op_id: string;
+  program: string;
+  source_file: string;
+  line: number;
+  col: number;
+  type: "MOVE" | "COMPUTE" | "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE";
+  origin: "parsed" | "scanned";
+  status: "established" | "partial" | "unresolved" | "unsupported";
+  source_operands: FlowOperand[];
+  receivers: FlowOperand[];
+  options: {
+    rounded: boolean; size_error: boolean; mode: string | null;
+    giving: boolean; remainder: string | null;
+  };
+  guards: { cond_id: string; branch: string; line: number }[];
+  evidence: string;
+  expression?: { text: string; supported: boolean } | null;
+  unsupported_reason?: string | null;
+}
+
+export interface DataflowCondition {
+  cond_id: string;
+  program: string;
+  source_file: string;
+  line: number;
+  col: number;
+  op: string | null;
+  left: FlowOperand;
+  right: FlowOperand;
+  origin: string;
+  evidence: string;
+  status: string;
+}
+
+export interface DataflowProgram {
+  program: string;
+  origin: "parsed" | "scanned";
+  operations: DataflowOp[];
+  conditions: DataflowCondition[];
+  graph: { nodes: FlowNode[]; edges: FlowEdge[] };
+  unsupported_statements: { structure: string; file: string; line: number; reason: string; text: string }[];
+  coverage: Record<string, number>;
+}
+
+export interface FlowNode {
+  id: string; kind: string; ref: string | null; label: string;
+  origin: string; source_file: string; line: number | null;
+}
+
+export interface FlowEdge {
+  from: string; to: string; kind: string; role?: string | null;
+  line: number; evidence: string; rounded?: boolean;
+}
+
+export interface CrossProgramLink {
+  caller: string; callee: string;
+  argument: string | null; parameter: string | null;
+  call: { target: string; line: number; evidence: string };
+  mapping_status: string;
+  position: number | null;
+  status: "established" | "unresolved_declaration";
+  from_decl: string | null; to_decl: string | null;
+  reason?: string;
+  caller_writes: { op_id: string; line: number; evidence: string }[];
+  callee_reads: { op_id: string; line: number; evidence: string }[];
 }
 
 export interface ProjectImpact {

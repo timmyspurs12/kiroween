@@ -34,8 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 3  # v3: cross_file gains the logical
-                             # program data model (Milestone 5)
+PROJECT_SCHEMA_VERSION = 4  # v4: cross_file gains the statement-
+                             # level data-flow model (Milestone 6)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -349,9 +349,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 3:
-    cross_file gains the logical program data model with copybook-aware
-    semantics)."""
+    "error": reason}] — build the full project envelope (schema_version 4:
+    cross_file gains the statement-level data-flow model)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -646,6 +645,9 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
                 cb_findings += 1
     findings.extend(xfs_findings)
 
+    superseded = {"COMPUTE statement", "ADD statement",
+                  "SUBTRACT statement", "MULTIPLY statement",
+                  "DIVIDE statement", "IF statement"}
     logical_section = {}
     for fid in sorted(models):
         m = models[fid]
@@ -654,10 +656,109 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
             "declarations": m["declarations"],
             "references": m.get("references", []),
             "unsupported_structures": m["unsupported_structures"],
-            "unsupported_statements": m.get("unsupported_statements", []),
+            "unsupported_statements": [
+                u for u in m.get("unsupported_statements", [])
+                if u["structure"] not in superseded],
             "associations": m["associations"],
         }
     cross_file["logical"] = logical_section
+
+    # ---- statement-level data flow (Milestone 6) -------------------------
+    from necro import dataflow as _dataflow
+    from necro.dataflow import DFA_ASSUMPTIONS
+    flow_programs: Dict[str, dict] = {}
+    for fid in sorted(models):
+        model = models[fid]
+        pf = per_file.get(fid) or {}
+        dfd_findings: List[Diagnostic] = []
+        if pf.get("status") == "analyzed" and pf.get("result"):
+            ops, conds = _dataflow.ops_from_ast(pf["result"], fid, model)
+            unsup = []
+        else:
+            moves, m_unsup = _logical.scan_moves(fid, contents[fid])
+            conds, guards, c_unsup, suppressed = \
+                _dataflow.scan_conditions(fid, contents[fid])
+            # statements inside unsupported constructs (EVALUATE bodies)
+            # are not emitted as operations: their controlling context
+            # was never established
+            moves = [mv for mv in moves if mv["line"] not in suppressed]
+            move_ops = [_dataflow.move_op_from_scan(model, mv)
+                        for mv in moves]
+            arith, a_unsup = _dataflow.scan_arithmetic(
+                fid, contents[fid], suppressed)
+            for op in move_ops + arith:
+                op["guards"] = guards.get(op["line"], [])
+                op["op_id"] = _dataflow._op_id(fid, op["line"], op["col"],
+                                               op["type"])
+            refs_sink: List[dict] = []
+            dfd_findings = _dataflow.analyze_scanned_arithmetic(
+                model, arith, refs_sink)
+            ops = sorted(move_ops + arith,
+                         key=lambda o: (o["line"], o["col"]))
+            # M5's MOVE scanner recorded arithmetic verbs as unsupported;
+            # M6 supersedes those records with structured operations
+            superseded = {"COMPUTE statement", "ADD statement",
+                          "SUBTRACT statement", "MULTIPLY statement",
+                          "DIVIDE statement", "IF statement"}
+            unsup = ([u for u in m_unsup
+                      if u["structure"] not in superseded]
+                     + a_unsup + c_unsup)
+        for op in ops:
+            if not op["op_id"]:
+                op["op_id"] = _dataflow._op_id(fid, op["line"],
+                                               op["col"], op["type"])
+        graph = _dataflow.build_graph(fid, model, ops, conds)
+        ops_cov = {"operations_total": len(ops)}
+        for st in ("established", "partial", "unresolved", "unsupported"):
+            ops_cov["operations_" + st] = sum(
+                1 for o in ops if o["status"] == st)
+        flow_programs[fid] = {
+            "program": fid,
+            "origin": ("parsed" if ops and ops[0]["origin"] == "parsed"
+                       else "scanned"),
+            "operations": ops,
+            "conditions": conds,
+            "graph": graph,
+            "unsupported_statements": unsup,
+            "coverage": dict(ops_cov, **{
+                "conditions_total": len(conds),
+                "edges_total": len(graph["edges"]),
+                "nodes_total": len(graph["nodes"]),
+            }),
+        }
+        findings.extend(dfd_findings)
+    links = _dataflow.cross_program_links(cross_file["mappings"],
+                                          flow_programs)
+    dfd_totals = {
+        "programs_with_dataflow": len(flow_programs),
+        "operations_total": sum(f["coverage"]["operations_total"]
+                                for f in flow_programs.values()),
+        "operations_established": sum(
+            f["coverage"]["operations_established"]
+            for f in flow_programs.values()),
+        "operations_unsupported": sum(
+            f["coverage"]["operations_unsupported"]
+            for f in flow_programs.values()),
+        "conditions_total": sum(f["coverage"]["conditions_total"]
+                                for f in flow_programs.values()),
+        "edges_total": sum(f["coverage"]["edges_total"]
+                           for f in flow_programs.values()),
+        "cross_program_links": len(links),
+        "cross_program_links_established": sum(
+            1 for l in links if l["status"] == "established"),
+        "unsupported_statements_total": sum(
+            len(f["unsupported_statements"])
+            for f in flow_programs.values()),
+    }
+    cross_file["dataflow"] = {
+        "schema_note": "statement-level data flow (project schema v4); "
+                       "edges are static source structure, not proof of "
+                       "runtime execution",
+        "programs": flow_programs,
+        "cross_program_links": links,
+        "assumptions": DFA_ASSUMPTIONS,
+        "coverage": dfd_totals,
+    }
     cross_file["coverage"].update({
         "logical_programs": len(logical_section),
         "logical_declarations": sum(
@@ -735,6 +836,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "assumptions": PROJECT_ASSUMPTIONS + [
             {"id": a["id"], "topic": a["topic"], "detail": a["detail"]}
             for a in list(XFD_ASSUMPTIONS) + list(XFS_ASSUMPTIONS)
+            + list(DFA_ASSUMPTIONS)
         ],
         "summary": summary,
     }

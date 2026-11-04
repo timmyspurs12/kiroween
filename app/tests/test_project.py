@@ -46,7 +46,7 @@ def finding(r, code):
 def test_example_project_exists_and_ingests():
     assert EXAMPLE.is_dir()
     r = example_project()
-    assert r["summary"]["programs"] == 9
+    assert r["summary"]["programs"] == 10
     assert r["summary"]["copybooks"] == 6
 
 
@@ -235,17 +235,17 @@ def test_per_file_rejected_carry_reason_and_no_downgrade():
 
 def test_project_envelope_shape_and_coverage():
     r = example_project()
-    assert r["schema_version"] == 3  # v3 adds cross_file.logical
+    assert r["schema_version"] == 4  # v4 adds cross_file.dataflow
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
                 "summary"):
         assert key in r
     cov = r["coverage"]
-    assert cov["files_total"] == 15
-    assert cov["files_analyzed"] == 1 and cov["files_rejected"] == 8
+    assert cov["files_total"] == 16
+    assert cov["files_analyzed"] == 1 and cov["files_rejected"] == 9
     assert cov["files_copybook"] == 6
-    assert cov["dependencies_total"] == 14
-    assert cov["dependencies_resolved"] == 10
+    assert cov["dependencies_total"] == 16
+    assert cov["dependencies_resolved"] == 12
     assert cov["dependencies_unresolved"] == 3
     assert cov["dependencies_ambiguous"] == 1
     assert cov["cycles"] == 1
@@ -298,7 +298,7 @@ def test_coverage_reports_items_needing_human_review():
     # risk-class findings (dynamic CALL, ambiguous COPY, cycle) are the
     # review items; the missing-copybook violation is not a review item
     r = example_project()
-    assert r["coverage"]["needs_human_review"] == 10
+    assert r["coverage"]["needs_human_review"] == 13
     # single-file schema uses the same semantics: risks, not violations
     gl = r["per_file"]["src/GLUPDATE.cbl"]["result"]
     assert gl["coverage"]["needs_human_review"] == \
@@ -370,11 +370,11 @@ def test_api_project_and_example_endpoints():
         with urllib.request.urlopen(base + "/api/project/example",
                                     timeout=10) as res:
             ex = json.load(res)
-        assert ex["name"] == "sample-project" and len(ex["files"]) == 15
+        assert ex["name"] == "sample-project" and len(ex["files"]) == 16
         r = _post_project(base, {"name": ex["name"], "files": ex["files"]})
-        assert r["schema_version"] == 3  # v3 adds cross_file.logical
-        assert len(r["edges"]) == 14
-        assert len(r["impact"]) == 15  # stateless: impact embedded per file
+        assert r["schema_version"] == 4  # v4 adds cross_file.dataflow
+        assert len(r["edges"]) == 16
+        assert len(r["impact"]) == 16  # stateless: impact embedded per file
         imp = r["impact"]["copybooks/Q.cpy"]
         assert imp["transitive_dependants"] == [
             "copybooks/P.cpy", "src/CYCTEST.cbl"]
@@ -394,8 +394,8 @@ def test_cli_project_exit_codes_and_json():
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 1  # missing copybook = violation-class finding
     env = json.loads(r.stdout)
-    assert env["schema_version"] == 3
-    assert env["coverage"]["dependencies_resolved"] == 10
+    assert env["schema_version"] == 4
+    assert env["coverage"]["dependencies_resolved"] == 12
 
     # human mode: still exit 1, findings printed
     r2 = subprocess.run(CLI + ["project", "analyze", str(EXAMPLE)],

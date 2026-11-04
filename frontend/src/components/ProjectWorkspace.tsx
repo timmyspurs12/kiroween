@@ -5,6 +5,9 @@ import {
   CrossFileMapping,
   CrossFilePosition,
   LogicalModel,
+  DataflowProgram,
+  CrossProgramLink,
+  FlowOperand,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -167,7 +170,277 @@ export function ProjectWorkspace(props: {
     });
   };
 
-function DeclTree({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => void }) {
+function operandLabel(o: FlowOperand): string {
+  if (o.kind === "literal" || o.kind === "figurative") return o.text ?? "?";
+  return o.name ?? "?";
+}
+
+function OperandChip({ o }: { o: FlowOperand }) {
+  const decl = o.decl;
+  const uncertain = o.resolution && o.resolution !== "resolved";
+  return (
+    <span
+      className={`df-operand ${uncertain ? "uncertain" : ""}`}
+      title={
+        decl
+          ? `${decl.file}:L${decl.line} (${decl.origin_kind ?? decl.origin} origin)` +
+            (decl.via_copybooks && decl.via_copybooks.length
+              ? ` via ${decl.via_copybooks.join(" > ")}`
+              : "")
+          : o.resolution ?? ""
+      }
+    >
+      {operandLabel(o)}
+      {decl?.origin_kind === "copybook" && <span className="df-cb"> ⌘</span>}
+      {uncertain && <span className="df-unres"> ({o.resolution})</span>}
+    </span>
+  );
+}
+
+function OpRow({ o, conds }: { o: DataflowProgram["operations"][number]; conds: DataflowProgram["conditions"] }) {
+  return (
+    <div className={`df-op ${o.status}`}>
+      <span className="df-op-head">
+        <span className="xf-status interface parsed">{o.type}</span>
+        <span className="diag-loc">L{o.line}</span>
+        <span className={`xf-status ${o.status}`}>{o.status}</span>
+        {o.options.rounded && <span className="df-opt">ROUNDED</span>}
+        {o.options.size_error && <span className="df-opt">ON SIZE ERROR</span>}
+        {o.options.remainder && (
+          <span className="df-opt">REMAINDER {o.options.remainder}</span>
+        )}
+        {o.options.mode && <span className="df-opt">{o.options.mode}</span>}
+        {o.guards.map((g, i) => (
+          <span className="df-guard" key={i} title="guarding condition">
+            IF L{g.line} ({g.branch})
+          </span>
+        ))}
+      </span>
+      <span className="df-op-body">
+        {o.receivers.length > 0 && (
+          <>
+            <span className="df-arrow">→ writes </span>
+            {o.receivers.map((t, i) => (
+              <OperandChip key={i} o={t} />
+            ))}
+          </>
+        )}
+        {o.source_operands.length > 0 && (
+          <>
+            <span className="df-arrow"> ← from </span>
+            {o.source_operands.map((x, i) => (
+              <OperandChip key={i} o={x} />
+            ))}
+          </>
+        )}
+        {o.expression && !o.expression.supported && (
+          <span className="lg-reason"> expression not established</span>
+        )}
+      </span>
+      <span className="pj-rel-ev">{o.evidence}</span>
+      {o.guards.length > 0 && (
+        <span className="df-cond-src">
+          {o.guards.map((g) => {
+            const c = conds.find((x) => x.cond_id === g.cond_id);
+            return c ? `condition L${c.line}: ${c.evidence}` : null;
+          })}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function FieldFlow({ flow, logical, declId }: {
+  flow: DataflowProgram;
+  logical?: LogicalModel;
+  declId: string;
+}) {
+  const graph = flow.graph;
+  const did = "d:" + declId;
+  const decl = logical?.declarations.find((d) => d.decl_id === declId);
+  const producerEdges = graph.edges.filter(
+    (e) => e.kind === "receiver" && e.to === did,
+  );
+  const consumerEdges = graph.edges.filter(
+    (e) => e.kind === "operand" && e.from === did,
+  );
+  const condEdges = graph.edges.filter(
+    (e) => e.kind === "condition" && e.from === did,
+  );
+  const nodeLabel = (id: string) =>
+    graph.nodes.find((n) => n.id === id)?.label ?? id;
+  return (
+    <div className="df-field">
+      <p className="ov-note">
+        data flow for <span className="lg-name">{decl?.name ?? declId}</span>
+        {decl && (
+          <>
+            {" "}— declared in {decl.source_file}:L{decl.line} (
+            {decl.origin} origin
+            {decl.via_copybooks.length > 0 &&
+              `, via ${decl.via_copybooks.join(" > ")}`}
+            )
+          </>
+        )}
+      </p>
+      <div className="df-field-block">
+        <span className="df-block-title">receives value from</span>
+        {producerEdges.length === 0 && (
+          <span className="xf-void">no supported operation writes it</span>
+        )}
+        {producerEdges.map((e, i) => {
+          const contribs = graph.edges.filter(
+            (x) => x.kind === "operand" && x.to === e.from,
+          );
+          const guards = graph.edges.filter(
+            (x) => x.kind === "guard" && x.to === e.from,
+          );
+          return (
+            <div className="lg-ref-row" key={i}>
+              <span className="lg-name">
+                {nodeLabel(e.from)} L{e.line}
+              </span>
+              <span className="xf-pos-item">
+                ← {contribs.map((c) => nodeLabel(c.from)).join(", ") ||
+                  "literal / unknown"}
+              </span>
+              {e.rounded && <span className="df-opt">ROUNDED</span>}
+              {guards.map((g, gi) => (
+                <span className="df-guard" key={gi}>
+                  IF L{graph.nodes.find((n) => n.id === g.from)?.line} (
+                  {g.role})
+                </span>
+              ))}
+              <span className="pj-rel-ev">{e.evidence}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="df-field-block">
+        <span className="df-block-title">used by</span>
+        {consumerEdges.length === 0 && (
+          <span className="xf-void">no supported operation reads it</span>
+        )}
+        {consumerEdges.map((e, i) => (
+          <div className="lg-ref-row" key={i}>
+            <span className="lg-name">
+              {nodeLabel(e.to)} L{e.line}
+            </span>
+            <span className="xf-pos-item">as {e.role}</span>
+            <span className="pj-rel-ev">{e.evidence}</span>
+          </div>
+        ))}
+      </div>
+      {condEdges.length > 0 && (
+        <div className="df-field-block">
+          <span className="df-block-title">controls conditions</span>
+          {condEdges.map((e, i) => (
+            <div className="lg-ref-row" key={i}>
+              <span className="lg-name">IF L{e.line}</span>
+              <span className="pj-rel-ev">{e.evidence}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="ov-note">
+        Static source structure only — not proof of runtime execution.
+      </p>
+    </div>
+  );
+}
+
+function DataFlowView({ flow, links, program, onSelect }: {
+  flow: DataflowProgram;
+  links: CrossProgramLink[];
+  program: string;
+  onSelect: (id: string) => void;
+}) {
+  const here = links.filter(
+    (l) => l.caller === program || l.callee === program,
+  );
+  return (
+    <>
+      {flow.operations.map((o) => (
+        <OpRow key={o.op_id} o={o} conds={flow.conditions} />
+      ))}
+      {flow.operations.length === 0 && (
+        <p className="ov-note">No supported operations recognised.</p>
+      )}
+      {flow.unsupported_statements.length > 0 && (
+        <div className="lg-unsup">
+          {flow.unsupported_statements.map((u, i) => (
+            <div className="lg-ref-row" key={i}>
+              <span className="lg-name">{u.structure}</span>
+              <span className="lg-reason">
+                {u.file}:L{u.line} — {u.reason}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {here.length > 0 && (
+        <div className="df-field-block">
+          <span className="df-block-title">
+            cross-program data flow (CALL USING)
+          </span>
+          {here.map((l, i) => (
+            <div className="lg-ref-row" key={i}>
+              {l.caller === program ? (
+                <>
+                  <span className="lg-name">sends {l.argument}</span>
+                  <button className="ref-decl" onClick={() => onSelect(l.callee)}>
+                    {l.callee}
+                  </button>
+                  <span className="xf-pos-item">
+                    → param {l.parameter} (L{l.call.line})
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="lg-name">receives {l.parameter}</span>
+                  <button className="ref-decl" onClick={() => onSelect(l.caller)}>
+                    {l.caller}
+                  </button>
+                  <span className="xf-pos-item">
+                    ← arg {l.argument} (L{l.call.line})
+                  </span>
+                </>
+              )}
+              {l.status === "established" ? (
+                <>
+                  {l.caller_writes.length > 0 && (
+                    <span className="xf-size equal">
+                      written at L{l.caller_writes[0]?.line}
+                    </span>
+                  )}
+                  {l.callee_reads.length > 0 && (
+                    <span className="xf-size equal">
+                      read at L{l.callee_reads[0]?.line}
+                    </span>
+                  )}
+                  {l.caller_writes.length === 0 &&
+                    l.callee_reads.length === 0 && (
+                      <span className="xf-size unknown">
+                        no supported operation on either side
+                      </span>
+                    )}
+                </>
+              ) : (
+                <span className="lg-reason">{l.reason}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="ov-note">
+        Operations are recorded with evidence; unknown operands, unsupported
+        constructs and dynamic call boundaries stop the trace and say so.
+      </p>
+    </>
+  );
+}
+
+function DeclTree({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const rows = [...m.declarations].sort((a, b) => {
     const da = a.source_file.localeCompare(b.source_file);
     return da !== 0 ? da : (a.line ?? 0) - (b.line ?? 0);
@@ -181,7 +454,13 @@ function DeclTree({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => 
           <div className="lg-row" key={d.decl_id}
                style={{ paddingLeft: `calc(var(--sp-3) * ${depth})` }}>
             <span className="lg-level">{d.level}</span>
-            <span className="lg-name">{d.name}</span>
+            <button
+              className="lg-name lg-name-btn"
+              onClick={() => onSelectDecl(d.decl_id)}
+              title="Inspect data flow for this item"
+            >
+              {d.name}
+            </button>
             {d.picture && <span className="lg-pic">PIC {d.picture}</span>}
             {d.usage === "comp3" && <span className="lg-pic">COMP-3</span>}
             {d.usage && d.usage.startsWith("unsupported:") && (
@@ -219,7 +498,7 @@ function DeclTree({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => 
   );
 }
 
-function EffectiveData({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => void }) {
+function EffectiveData({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const counts = { resolved: 0, ambiguous: 0, unresolved: 0 };
   for (const r of m.references) {
     if (r.status in counts) counts[r.status as keyof typeof counts] += 1;
@@ -236,7 +515,7 @@ function EffectiveData({ m, onSelect }: { m: LogicalModel; onSelect: (id: string
           ))}
         </div>
       )}
-      <DeclTree m={m} onSelect={onSelect} />
+      <DeclTree m={m} onSelect={onSelect} onSelectDecl={onSelectDecl} />
       {m.references.length > 0 && (
         <div className="lg-refs">
           <span className="ov-note">
@@ -369,6 +648,10 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
   const selInterface = xf && selected ? xf.interfaces[selected] : undefined;
   const selLogical: LogicalModel | undefined =
     xf && selected ? xf.logical?.[selected] : undefined;
+  const selFlow = xf?.dataflow && selected
+    ? xf.dataflow.programs[selected]
+    : undefined;
+  const [flowDecl, setFlowDecl] = useState<string | null>(null);
   const xfCov = env?.cross_file?.coverage;
   const outMappings = useMemo(
     () => (xf && selected ? xf.mappings.filter((m) => m.from === selected) : []),
@@ -617,13 +900,44 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
             {selLogical && selLogical.declarations.length > 0 && (
               <div className="ov-section">
                 <h3>EFFECTIVE DATA (LOGICAL MODEL)</h3>
-                <EffectiveData m={selLogical} onSelect={setSelected} />
+                <EffectiveData
+                  m={selLogical}
+                  onSelect={setSelected}
+                  onSelectDecl={setFlowDecl}
+                />
                 <p className="ov-note">
                   Effective declarations combine this program&apos;s own
                   source with established COPY associations; every row keeps
                   its original file and line. Unsupported structures are
                   recorded, never silently sized or omitted.
                 </p>
+              </div>
+            )}
+
+            {selFlow && (selFlow.operations.length > 0 ||
+              selFlow.unsupported_statements.length > 0 ||
+              (xf?.dataflow?.cross_program_links ?? []).some(
+                (l) => l.caller === selected || l.callee === selected,
+              )) && (
+              <div className="ov-section">
+                <h3>DATA FLOW (STATEMENTS)</h3>
+                <DataFlowView
+                  flow={selFlow}
+                  links={xf?.dataflow?.cross_program_links ?? []}
+                  program={selected ?? ""}
+                  onSelect={setSelected}
+                />
+              </div>
+            )}
+
+            {selFlow && flowDecl && (
+              <div className="ov-section">
+                <h3>FIELD FLOW</h3>
+                <FieldFlow
+                  flow={selFlow}
+                  logical={selLogical}
+                  declId={flowDecl}
+                />
               </div>
             )}
 
@@ -757,6 +1071,18 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                       unresolved ·{" "}
                       {xfCov.copybook_semantic_findings}{" "}
                       copybook-origin finding(s)
+                    </dd>
+                  </>
+                )}
+                {xfCov && xfCov.operations_total != null && (
+                  <>
+                    <dt>Operations</dt>
+                    <dd>
+                      {xfCov.operations_total} recognised (
+                      {xfCov.operations_established} established ·{" "}
+                      {xfCov.operations_unsupported} unsupported) ·{" "}
+                      {xfCov.conditions_total} condition(s) ·{" "}
+                      {xfCov.cross_program_links} cross-program link(s)
                     </dd>
                   </>
                 )}

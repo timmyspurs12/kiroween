@@ -461,11 +461,15 @@ def test_unsupported_statements_recorded_not_interpreted():
 """
     r = run(("src/AUDUSER.cbl", prog), ("cpy/AUDREC.cpy", AUDREC))
     m = model_of(r, "src/AUDUSER.cbl")
+    # since Milestone 6, COMPUTE is a structured data-flow operation, so
+    # it is no longer a flat "unsupported statement" record
     u = m["unsupported_statements"]
-    assert [x["structure"] for x in u] == ["COMPUTE statement"]
-    assert u[0]["line"] == 7 and u[0]["file"] == "src/AUDUSER.cbl"
-    assert "not interpreted" in u[0]["reason"]
-    # the well-formed MOVE on the next line was still analysed
+    assert u == []
+    comp = [o for o in
+            r["cross_file"]["dataflow"]["programs"]["src/AUDUSER.cbl"]
+            ["operations"] if o["type"] == "COMPUTE"]
+    assert len(comp) == 1 and comp[0]["status"] == "established"
+    # the well-formed MOVE was still analysed through the M5 path
     refs = [(x["name"], x["role"]) for x in m["references"]]
     assert ("LK-ID", "receiver") in refs
 
@@ -596,7 +600,9 @@ def test_example_project_flagship_copybook_semantics():
     assert [(x["line"], x["detail"]["receiver"],
              x["detail"]["receiver_file"]) for x in f] == [
         (4, "LK-AMT", "copybooks/AUDREC.cpy"),
-        (6, "LK-RATE-EX", "copybooks/AUDREC.cpy")]
+        (6, "LK-RATE-EX", "copybooks/AUDREC.cpy"),
+        (8, "WS-TOTAL", "src/AUDTOTAL.cbl"),
+        (9, "WS-COUNT", "src/AUDTOTAL.cbl")]
     prec = findings_for(r, "SEM_PRECISION_LOSS")
     assert prec[0]["detail"]["receiver"] == "LK-RATE-EX"
     assert prec[0]["line"] == 6     # LK-RATE-EX's copybook line
@@ -631,7 +637,7 @@ def test_single_file_envelope_unchanged_by_m5():
 def test_project_schema_stays_additive():
     name, entries = ingest_dir()
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 3
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 4
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage",
                 "assumptions", "summary", "cross_file"):
@@ -646,7 +652,7 @@ def test_project_schema_stays_additive():
         ("src/FEEDER.cbl", "src/AUDITER.cbl")]
     # impact data-flow still distinct and populated
     imp = impact(r, "src/GLUPDATE.cbl")
-    assert len(imp["data_flow"]["receives_data_from"]) == 2
+    assert len(imp["data_flow"]["receives_data_from"]) == 3
 
 
 def test_scan_moves_moves_without_to_recorded():

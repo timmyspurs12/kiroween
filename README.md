@@ -101,6 +101,32 @@ arguments and parameters through the same model. Project envelope grows
 additively (schema 2 → 3: `cross_file.logical`); the single-file
 response is unchanged.
 
+### Statement-level data-flow analysis (Milestone 6)
+
+Project analysis also builds a deterministic intra-program data-flow
+model. Recognised operations — MOVE, COMPUTE, ADD, SUBTRACT, MULTIPLY,
+DIVIDE — are recorded per program with operands, receivers, literal
+sources, options (ROUNDED, GIVING, TO/FROM/INTO/BY, REMAINDER,
+ON SIZE ERROR), guarding conditions (IF/ELSE/END-IF with branch),
+resolved declarations with full provenance, evidence text and an
+`established`/`partial`/`unresolved`/`unsupported` status. Parsed
+(frozen-subset) programs extract operations from the parser's statement
+trees; COPY-using programs use the source-evidence scanner, whose
+arithmetic capacity/precision/sign analysis reuses the layer-5 engine
+verbatim (identical thresholds, codes, severities, hints — findings
+cite the receiver's original declaration location). Operations and
+declarations form a per-program graph (operand→operation→receiver,
+condition→operation guard edges) supporting the questions: where does
+this field get its value, what contributes to it, what modifies it,
+what depends on it, where is it used — exposed in the UI as the FIELD
+FLOW view. Cross-program links connect CALL USING arguments to receiving
+parameters at operation level (caller writes → callee reads); dynamic
+targets and unresolved declarations stop the trace and say so. Static
+edges are source structure, not proof of runtime execution; EVALUATE
+bodies, malformed statements and unterminated scopes are recorded
+unsupported with evidence, never interpreted. Project envelope grows
+additively (schema 3 → 4: `cross_file.dataflow`).
+
 ### Command-line use (batch / CI)
 
 ```bash
