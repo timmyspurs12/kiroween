@@ -1,0 +1,119 @@
+/* ==========================================================================
+   NecroSpec design tokens
+   Identity: dark-first precision instrument. Verdigris accent — the patina
+   of aged copper, for a tool that dissects dead code. No gradients, no
+   glassmorphism; hierarchy comes from surface steps, hairlines and weight.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* --- surfaces: four deliberate steps, darker -> lighter ------------- */
+  --surface-0: #14171a; /* app ground */
+  --surface-1: #1a1e22; /* panels */
+  --surface-2: #20252a; /* raised: inputs, hover rows */
+  --surface-3: #262c32; /* active/selected */
+  --surface-inset: #101315; /* code wells, recessed */
+
+  /* --- edges ----------------------------------------------------------- */
+  --edge: #2a3138;
+  --edge-strong: #3a434c;
+  --edge-accent: #3d5c50;
+
+  /* --- text ------------------------------------------------------------ */
+  --text-hi: #e9edf0;
+  --text: #c2cad1;
+  --text-mute: #8d98a2;
+  --text-faint: #7a8590;
+
+  /* --- accent: verdigris ------------------------------------------------ */
+  --accent: #45b08c;
+  --accent-hi: #63cba7;
+  --accent-dim: rgba(69, 176, 140, 0.13);
+  --accent-deep: #2c7a60;
+  --on-accent: #0d1512;
+
+  /* --- semantic states --------------------------------------------------- */
+  --state-error: #e0645a;
+  --state-error-dim: rgba(224, 100, 90, 0.14);
+  --state-warning: #d9a33c;
+  --state-warning-dim: rgba(217, 163, 60, 0.13);
+  --state-ok: #4fa86b;
+  --state-ok-dim: rgba(79, 168, 107, 0.14);
+  --state-info: #7ba0bc;
+  --state-info-dim: rgba(123, 160, 188, 0.12);
+
+  /* --- code token colors (COBOL highlighting) --------------------------- */
+  --tok-keyword: #63cba7;
+  --tok-ident: #d8dee4;
+  --tok-number: #d9a33c;
+  --tok-comment: #5f6a74;
+  --tok-punct: #8d98a2;
+  --tok-level: #7ba0bc;
+  --tok-string: #c98b8b;
+
+  /* --- type -------------------------------------------------------------- */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
+  --fs-2xs: 10.5px;
+  --fs-xs: 11.5px;
+  --fs-s: 12.5px;
+  --fs-m: 13.5px;
+  --fs-l: 15px;
+  --fs-xl: 18px;
+  --lh-tight: 1.3;
+  --lh-body: 1.5;
+  --lh-code: 1.55;
+
+  /* --- spacing: 4px grid --------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* --- shape: instrument-sharp, minimal radius ----------------------------- */
+  --radius-s: 3px;
+  --radius-m: 5px;
+  --border-width: 1px;
+
+  /* --- elevation: borders carry structure; single focus shadow ------------- */
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --focus-ring: 2px solid var(--accent-hi);
+
+  /* --- metrics ------------------------------------------------------------- */
+  --header-h: 52px;
+  --statusbar-h: 26px;
+  --rail-w: 264px;
+  --inspector-w: 460px;
+  --code-char-w: 1ch;
+
+  /* --- motion ---------------------------------------------------------------- */
+  --t-fast: 120ms cubic-bezier(0.3, 0, 0.4, 1);
+  --t-med: 240ms cubic-bezier(0.3, 0, 0.4, 1);
+  --t-slow: 420ms cubic-bezier(0.3, 0, 0.4, 1);
+
+  /* --- breakpoints (for reference in JS) ------------------------------------ */
+  --bp-narrow: 980px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

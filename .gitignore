@@ -1,0 +1,16 @@
+# Node
+node_modules/
+frontend/node_modules/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Frontend build is committed deliberately (app/web_dist) so the product runs
+# with `python3 app/server.py` alone; regenerate with `npm run build` in frontend/.
+
+# TS build cache
+*.tsbuildinfo
