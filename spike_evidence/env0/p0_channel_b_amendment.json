@@ -1,0 +1,155 @@
+{
+  "amendment_identity": {
+    "artifact": "env0/p0_channel_b_amendment.json",
+    "issued": "2026-11-04",
+    "amends": "env0/p0_disposition_amendment.json (P0 disposition and closure_requirements only). Append-only: nothing in any existing evidence, specification, manifest, or historical file is modified.",
+    "authority": "Project owner directive 'NecroSpec — Channel B Provenance Waiver and P0 Baseline Reclassification' (2026-11-04), applied against the closure_requirements and Channel B definition recorded in env0/p0_disposition_amendment.json and the fail-stop requirements of E-11 §0.4v2 (rev61_errata.md).",
+    "edit_policy": "Append-only amendment. Existing historical files and manifests are preserved byte-for-byte; preservation was verified before and after this record was written (see preservation_record). A new checksum manifest (env0/P0_CHANNEL_B_SHA256SUMS) covers this record; no existing manifest was altered to cover it retroactively."
+  },
+
+  "channel_b_authorization": {
+    "authorized": true,
+    "authorization_quote_exact": "YES — I AUTHORIZE CHANNEL B.",
+    "authorization_date": "2026-11-04",
+    "authorization_source": "Project owner, directive 'NecroSpec — Channel B Provenance Waiver and P0 Baseline Reclassification' (2026-11-04), section 1 (Authorization).",
+    "scope_of_authorization": "Use of the six existing transcript-derived working extracts as a user-attested baseline for the NecroSpec project, subject to the provenance limitations and non-claims recorded in this amendment.",
+    "explicitly_not": "This authorization is NOT a declaration that Channel A succeeded, NOT a claim of original-source recovery, and NOT an authorization of any technical execution. It is an explicit waiver of the original-source-hash acceptance route (E-11 §0.4v2 step 4 / Channel A) and a redefinition of the baseline acceptance route to Channel B, as recorded in env0/p0_disposition_amendment.json closure_requirements.channel_B_user_attested_fallback.",
+    "channel_b_definition_applied": "User-attested copies of the six documents with an explicit recorded attestation that they are faithful copies of the originally emitted messages — yielding the weaker, recorded provenance grade defined by the standing amendment. Acceptability of this weaker grade is the owner's decision and was exercised by the quoted authorization."
+  },
+
+  "baseline_candidates": [
+    {
+      "path": "spike_evidence/spec/rev4_extract.md",
+      "document_identity": "NecroSpec Rev 4 — §2.2.2 (lexical rules + Lark LALR(1) EBNF grammar) and §3.1–§3.3 (COBOL fixtures #1–#12, negative fixtures #13–#18, native C fixtures #19–#20), dependency range only",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "d1f0aa97a7805663ef3a47dbe209c2f0b36ee8f8ee012926746550a6790b5bad",
+      "bytes": 22036,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "Headings verified in-file this pass: '#### 2.2.2 Lexical Rules...' (line 1), '### 3.1 Positive NVS-0 COBOL Fixtures (#1–#12)' (line 57), '### 3.2 Negative COBOL Fixtures (#13–#18...)' (line 264), '### 3.3 Native C Fixtures (#19–#20...)' (line 346). Content matches the intended transcript-derived dependency range per the recorded boundary convention.",
+      "hash_matches_published_anchor": true
+    },
+    {
+      "path": "spike_evidence/spec/rev5.md",
+      "document_identity": "NecroSpec Rev 5 — Phase-0 Technical Spike Execution Specification, §1–§13 (full normative specification)",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "3643a3c0596cc3bdffb2df407ab7db3dcfcd83550282a1505fd1c2ec8549894e",
+      "bytes": 71478,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "All 13 top-level sections '## §1' through '## §13' verified present in-file this pass (line-numbered heading map recorded in the session log).",
+      "hash_matches_published_anchor": true
+    },
+    {
+      "path": "spike_evidence/spec/rev6_errata.md",
+      "document_identity": "NecroSpec Rev 6 — Targeted Final Errata E-0 … E-7 (+ Deliverables), including the legacy alternate-bytes occurrences at lines 293, 294, 379, 380 preserved as-emitted",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "386920fa161c85b56d7c1ae90b41f0b3de12cf2149727bef4e7847d3330b1616",
+      "bytes": 39942,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "Headings E-0 through E-7 (8/8) verified in-file this pass at lines 9, 19, 62, 83, 285, 305, 309, 345.",
+      "hash_matches_published_anchor": true
+    },
+    {
+      "path": "spike_evidence/spec/rev61_errata.md",
+      "document_identity": "NecroSpec Rev 6.1 — Errata E-8 … E-11 (+ Deliverables 1–6), including the E-11 §0.4v2 P0 precondition (lines 242–256) and the 'fixtures #1–#19' occurrence at line 247 preserved as-emitted (superseded for normative use by Rev6.4 F-06)",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "5d7a65b2b4a96731df3fd4196282b33aef06e1c9866bfae43fb9dfc06936aab8",
+      "bytes": 21867,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "Headings E-8, E-9, E-10, E-11 (4/4) verified in-file this pass at lines 9, 229, 238, 242.",
+      "hash_matches_published_anchor": true
+    },
+    {
+      "path": "spike_evidence/spec/rev62_errata.md",
+      "document_identity": "NecroSpec Rev 6.2 — E-12 (read_proc_slice correction) and E-13 (complete V1–V7 input PICTURE audit table), + Deliverables; legacy alternate-bytes occurrences at lines 73, 77 preserved as-emitted",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "beb8bf2e190b01523e8603d696aadd385f0d89e6651a972efb5d3c5145c42f4c",
+      "bytes": 13915,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "Headings 'Deliverable 1 — E-12' (line 7) and 'Deliverable 2 — E-13' (line 58) verified in-file this pass.",
+      "hash_matches_published_anchor": true
+    },
+    {
+      "path": "spike_evidence/spec/rev63_errata.md",
+      "document_identity": "NecroSpec Rev 6.3 — E-14 (open_fail_flags consumer mapping), E-15 (corrected V3/V4 alternate bytes), E-16 (field-audit count reconciliation) + matrix/verdict",
+      "classification": "TRANSCRIPT-DERIVED USER-ATTESTED BASELINE",
+      "sha256_fresh_2026_11_04": "e868810c17d4259914bcd4c4c7c015020d848481d27c3a27daae1e57ccf68e3d",
+      "bytes": 7557,
+      "exists": true,
+      "required_sections_present": true,
+      "section_evidence": "Headings E-14 (line 7), E-15 (line 28), E-16 (line 56) verified in-file this pass.",
+      "hash_matches_published_anchor": true
+    }
+  ],
+
+  "provenance_facts": {
+    "origin_of_the_six_files": "All six files were reconstructed from conversation transcripts during the authoring session of 2026-11-04 by best-effort verbatim transcription (no paraphrase, no normalization, no reflow), as recorded in env0/spec_manifest.json (extraction.method, source_availability). They are transcript-derived copies, not original files.",
+    "channel_a_recovery_investigation": {
+      "record": "env0/p0_channel_a_investigation.md",
+      "sha256": "4e58ce27055ef2d7e1df1dd0722fe854452de11f5328f6c083a1920fd8000f75",
+      "outcome": "P0 ABORTED — CHANNEL A RECOVERY INCOMPLETE. Ten recovery mechanisms attempted and documented (workspace/attachment scan, platform-internal storage, local and remote git archaeology, GitHub releases/issues/PRs/repos/gists, global code search, public web, connected-app inventory); no Channel A artifact recoverable; originals exist only in the platform conversation store.",
+      "published_at_commit": "42a793a077e6da065f4c95d1f9760bc71d3efbb5"
+    },
+    "original_platform_origin_byte_streams": "REMAIN UNAVAILABLE to the current repository workflow. No original-stream hash exists; none was ever computed; none is invented by this amendment.",
+    "integrity_vs_authenticity": {
+      "working_copy_integrity": "ESTABLISHED — each of the six files carries a mechanically computed SHA-256 (fresh calculation this pass from actual file bytes), each matching its digest in spec/SHA256SUMS and PUBLICATION_SHA256SUMS; anyone can re-verify the published bytes against the recorded digests. The corpus is self-consistent and unaltered since hashing/publication.",
+      "original_source_authenticity": "NOT ESTABLISHED — no byte-for-byte equality with the originally emitted platform messages has been or can be established without byte-accessible originals. Integrity and authenticity are different verifications and are recorded separately here, as required by the corpus README §9."
+    },
+    "content_match_assessment": "File existence verified; required sections verified present in each file (per-candidate section_evidence above); contents match the intended transcript-derived document ranges as far as the available evidence permits — that evidence is internal consistency, section completeness, and the transcript-as-appeal-authority process record; it is not byte-level comparison against originals."
+  },
+
+  "accepted_baseline_scope": {
+    "what_is_accepted": "The six files listed in baseline_candidates, at exactly the recorded SHA-256 digests and byte lengths, in this repository, as the project's declared specification baseline for all future work.",
+    "baseline_is_a_reference_standard": "Future differential and conformance tests establish equivalence ONLY against this declared user-attested baseline (the six files as byte-pinned above, as amended by the published errata chain Rev6.4 → Rev6.4.1 → Rev6.4.2). No future test result may be described as equivalence with 'the original specification' beyond this baseline.",
+    "consumption_order_unchanged": "Rev4_extract → Rev5 → Rev6 → Rev6.1 → Rev6.2 → Rev6.3 → Rev6.4 → Rev6.4.1 → Rev6.4.2; later layers control on conflict; superseded historical text preserved as-emitted.",
+    "amendable_only_append_only": "Any future change to the baseline proceeds by new superseding layers and new hash manifests; existing baseline files are frozen."
+  },
+
+  "limitations_and_non_claims": {
+    "statement_1_no_original_stream_hashes": "No original-stream hashes have been established.",
+    "statement_2_no_byte_equality": "No byte-for-byte equality with the original platform artifacts has been established.",
+    "statement_3_no_platform_export": "No lossless platform export has been recovered (Channel A recovery incomplete per env0/p0_channel_a_investigation.md).",
+    "statement_4_no_verbatim_original_claim": "The project makes no claim that the six extracts are verbatim originals; they are classified TRANSCRIPT-DERIVED USER-ATTESTED BASELINE and must never be represented as original platform exports or independently authenticated source material.",
+    "statement_5_baseline_relative_equivalence": "Future differential tests establish equivalence only against this declared user-attested baseline.",
+    "statement_6_no_representation_as_authenticated": "The baseline may not be represented to judges, users, or contributors as independently authenticated original source material.",
+    "residual_limitations": "The transcript-as-appeal-authority process remains the only (non-cryptographic) fidelity backstop; if the owner later delivers a Channel A export, a provenance upgrade may be recorded append-only, but nothing in this amendment anticipates or assumes it."
+  },
+
+  "p0_closure": {
+    "disposition": "P0 PASS — CHANNEL B USER-ATTESTED BASELINE ACCEPTED",
+    "immediate_clarification": "CHANNEL A FAILED — ORIGINAL SOURCE PROVENANCE INCOMPLETE",
+    "rationale": "All mandatory conditions of the Channel B procedure are satisfied: (1) the owner's explicit authorization is recorded verbatim with its date; (2) all six baseline candidates exist, are section-complete per E-11 §0.4v2 step 2 and the standing amendment's required_material, and carry fresh, mechanically computed SHA-256 digests matching their published anchors; (3) each is classified TRANSCRIPT-DERIVED USER-ATTESTED BASELINE, never as an original; (4) the Channel A investigation record and its negative outcome are referenced; (5) the integrity/authenticity distinction and the baseline scope are recorded; (6) all six non-claims are recorded. The owner's authorization is an explicit waiver of the original-source-hash acceptance route; under that recorded waiver the fail-stop of E-11 §0.4v2 step 6 is remediated by formal reclassification of the acceptance baseline — not by original-source recovery, which remains incomplete.",
+    "what_pass_does_not_mean": "This disposition attests baseline acceptance only. It is NOT evidence that any experiment ran, any gate passed, any compiler behavior was observed, or any runtime parity exists. It does NOT cure, diminish, or reinterpret the Channel A failure; original-source provenance remains INCOMPLETE and is recorded as such in the immediate clarification.",
+    "superseded_records": "The disposition 'ABORTED-P0 — SOURCE PROVENANCE INCOMPLETE' in env0/p0_disposition_amendment.json is superseded BY THIS RECORD for disposition purposes only; that amendment remains historically controlling for everything not superseded here (including its integrity statements, which remain true). env0/spec_manifest.json remains byte-preserved with its superseded 'P0 PASS' field; neither earlier record is edited.",
+    "gates": {
+      "P0": "P0 PASS — CHANNEL B USER-ATTESTED BASELINE ACCEPTED (provenance grade: user-attested; CHANNEL A FAILED — ORIGINAL SOURCE PROVENANCE INCOMPLETE)",
+      "Env-0": "PROPOSED, SEPARATELY SCOPED — NOT AUTHORIZED AND NOT EXECUTED BY THIS PASS. Channel B closure makes Env-0 the next proposed technical action; it does not itself authorize technical implementation.",
+      "Exp-1": "NOT EXECUTED",
+      "Exp-2": "NOT EXECUTED",
+      "Exp-3": "NOT EXECUTED",
+      "Exp-4": "NOT EXECUTED",
+      "technical_validation_or_runtime_parity": "NO CLAIM — none has been performed or observed"
+    }
+  },
+
+  "preservation_record": {
+    "verified_before_writing": {
+      "PUBLICATION_SHA256SUMS": "11/11 OK",
+      "spec/SHA256SUMS": "6/6 OK",
+      "REV64_SHA256SUMS": "2/2 OK",
+      "REV641_SHA256SUMS": "2/2 OK",
+      "REV642_SHA256SUMS": "2/2 OK",
+      "env0/P0_CHANNEL_A_SHA256SUMS": "1/1 OK",
+      "env0/p0_disposition_amendment.json": "a14cdca5835fb40a2ae0e960a90fd34473c6d5a5ff761fd826b8286d9dccc824",
+      "fresh_baseline_hashes": "Computed this pass from actual bytes; all six match their published anchors (see baseline_candidates)."
+    },
+    "verified_after_writing": "Re-verified with identical results immediately after this amendment and its manifest were written (recorded in the session final report). Rev4–Rev6.4.2 files, both prior P0 records, the Channel A investigation, the README, and all existing manifests are byte-identical.",
+    "new_manifest": "env0/P0_CHANNEL_B_SHA256SUMS covers this amendment only; no existing manifest was modified to cover it retroactively."
+  },
+
+  "next_permitted_action": "Env-0 may be PROPOSED as a separately scoped, separately authorized technical action. Until such authorization: no dependency installation, no compilation, no container build, no experiments, no deployment."
+}
