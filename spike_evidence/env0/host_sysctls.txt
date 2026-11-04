@@ -1,0 +1,29 @@
+# Env-0 host sysctls + identity (recorded 2026-11-04, host e2b.local, Debian 12 bookworm container)
+# Rev5 §2.1.1 A1 recording requirement. Values read from /proc/sys; "NOT-PRESENT-IN-KERNEL" = key absent.
+
+kernel.unprivileged_userns_clone           NOT-PRESENT-IN-KERNEL (Debian-patch key absent from 6.1.158+)
+kernel.apparmor_restrict_unprivileged_userns NOT-PRESENT-IN-KERNEL (key absent)
+vm.overcommit_memory                       0
+kernel.yama.ptrace_scope                   NOT-PRESENT-IN-KERNEL
+user.max_user_namespaces                   15734
+kernel.unprivileged_bpf_disabled           2
+kernel.seccomp.actions_avail               kill_process kill_thread trap errno user_notif trace log allow
+
+uname -a:
+Linux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Mon May 11 18:48:24 UTC 2026 x86_64 GNU/Linux
+id:
+uid=1001(user) gid=1001(user) groups=1001(user),27(sudo),100(users)
+os-release PRETTY_NAME:
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+nproc/mem:
+2
+               total        used        free      shared  buff/cache   available
+Mem:            3939         257        3649           1         243        3682
+disk /:
+/dev/root        21G  869M   20G   5% /
+cgroup v2:
+cgroup2fs
+cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot)
+capability probes: unshare -Ur true => exit 0; unshare -Urmnfp --map-root-user (tmpfs mount inside) => exit 0
+seccomp filter probe: PROBE-OK seccomp_mode=2 filters=1 getpid_blocked=yes(EPERM) x3/3 (see probes/)
+SysV shm probe: PROBE-OK (see probes/)

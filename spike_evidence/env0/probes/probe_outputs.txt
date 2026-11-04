@@ -1,0 +1,24 @@
+# Env-0 probe build & run log (2026-11-04)
+# Compiler: gcc (Debian 12.2.0-14+deb12u1) 12.2.0; policy: -O2 -Wall -Wextra -Werror (Rev5 §2.1.5)
+
+$ gcc -O2 -Wall -Wextra -Werror -o probe_seccomp probes/probe_seccomp.c
+probe_seccomp compile OK (zero warnings)
+$ gcc -O2 -Wall -Wextra -Werror -o probe_shm probes/probe_shm.c
+probe_shm compile OK (zero warnings)
+
+NOTE (findings during bring-up, preserved as evidence): first probe_seccomp.c draft failed -Werror
+(missing <stddef.h>; BPF_STMT/BPF_JUMP macro partial initializers) and then failed filter load EINVAL
+(agent BPF jump-offset arithmetic off-by-one). Both fixed in source; final source compiles clean and runs.
+
+$ ./probe_seccomp  (x3)
+PROBE-OK seccomp_mode=2 filters=1 getpid_blocked=yes(EPERM)   [exit 0]
+PROBE-OK seccomp_mode=2 filters=1 getpid_blocked=yes(EPERM)   [exit 0]
+PROBE-OK seccomp_mode=2 filters=1 getpid_blocked=yes(EPERM)   [exit 0]
+
+$ ./probe_shm (x2)
+PROBE-OK shmget=0 roundtrip=yes   [exit 0]
+PROBE-OK shmget=0 roundtrip=yes   [exit 0]
+
+$ unshare -Ur true                                   -> exit 0 (unprivileged userns OK)
+$ unshare -Urmnfp --map-root-user sh -c "..."        -> exit 0; pid=1 inside; Seccomp: 0; tmpfs mount inside userns OK
+$ unshare -Urmnfp: full bwrap-core primitive set operational
