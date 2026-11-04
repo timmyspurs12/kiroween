@@ -34,7 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 2  # v2: adds the cross_file section (Milestone 4)
+PROJECT_SCHEMA_VERSION = 3  # v3: cross_file gains the logical
+                             # program data model (Milestone 5)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -348,8 +349,9 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 2,
-    adding the cross_file section)."""
+    "error": reason}] — build the full project envelope (schema_version 3:
+    cross_file gains the logical program data model with copybook-aware
+    semantics)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -601,12 +603,76 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         per_file[fid] = {"status": status, "reason": reason,
                          "result": result}
 
-    # ---- cross-file data understanding (Milestone 4) ---------------------
-    # function-level import: xfile reads shared scan helpers from this module
+    # ---- cross-file data understanding (Milestones 4+5) ------------------
+    # function-level imports: xfile/logical read shared scan helpers from
+    # this module (deferred to avoid circular imports)
+    from necro import logical as _logical
+    from necro.logical import XFS_ASSUMPTIONS
     from necro.xfile import XFD_ASSUMPTIONS, analyze_cross_file
+    from necro.xfile import collect_declarations as _collect_decls
+    rel = _collect_decls(files, contents, edges, per_file)
+    for roots in rel["trees"].values():
+        for root in roots:
+            _logical._tree_status(root)
+    models: Dict[str, dict] = {}
+    for fid in sorted(f["file_id"] for f in files if f["kind"] == "program"):
+        models[fid] = _logical.build_logical_model(
+            fid, rel["trees"], rel["assoc"], rel["replacing"],
+            rel["dupe_copies"])
     cross_file, xfd_findings = analyze_cross_file(
-        files, contents, edges, per_file)
+        files, contents, edges, per_file, rel=rel, models=models)
     findings.extend(xfd_findings)
+
+    # copybook-aware semantics: MOVE statements of non-subset programs
+    # analysed through the logical model (reference rows + findings)
+    xfs_findings: List[Diagnostic] = []
+    ref_counts = {"resolved": 0, "ambiguous": 0, "unresolved": 0}
+    cb_findings = 0
+    for fid in sorted(models):
+        moves, unsup_stmts = _logical.scan_moves(fid, contents[fid])
+        refs, sem_findings = _logical.analyze_program_semantics(
+            models[fid], moves)
+        models[fid]["references"] = refs
+        models[fid]["unsupported_statements"] = unsup_stmts
+        for row in refs:
+            if row["status"] in ref_counts:
+                ref_counts[row["status"]] += 1
+        for d in sem_findings:
+            xfs_findings.append(d)
+            det = d.detail or {}
+            cands = det.get("candidates") or []
+            if det.get("via_copybooks") or \
+                    any(c.get("origin") == "copybook" for c in cands):
+                cb_findings += 1
+    findings.extend(xfs_findings)
+
+    logical_section = {}
+    for fid in sorted(models):
+        m = models[fid]
+        logical_section[fid] = {
+            "program": m["program"],
+            "declarations": m["declarations"],
+            "references": m.get("references", []),
+            "unsupported_structures": m["unsupported_structures"],
+            "unsupported_statements": m.get("unsupported_statements", []),
+            "associations": m["associations"],
+        }
+    cross_file["logical"] = logical_section
+    cross_file["coverage"].update({
+        "logical_programs": len(logical_section),
+        "logical_declarations": sum(
+            len(m["declarations"]) for m in logical_section.values()),
+        "logical_copybook_origin_declarations": sum(
+            1 for m in logical_section.values()
+            for d in m["declarations"] if d["origin"] == "copybook"),
+        "logical_unsupported_declarations": sum(
+            1 for m in logical_section.values()
+            for d in m["declarations"] if d["status"] == "unsupported"),
+        "references_resolved": ref_counts["resolved"],
+        "references_ambiguous": ref_counts["ambiguous"],
+        "references_unresolved": ref_counts["unresolved"],
+        "copybook_semantic_findings": cb_findings,
+    })
 
     findings.sort(key=lambda d: (d.code, d.line is None, d.line or 0,
                                  d.col or 0))
@@ -668,7 +734,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "coverage": coverage,
         "assumptions": PROJECT_ASSUMPTIONS + [
             {"id": a["id"], "topic": a["topic"], "detail": a["detail"]}
-            for a in XFD_ASSUMPTIONS
+            for a in list(XFD_ASSUMPTIONS) + list(XFS_ASSUMPTIONS)
         ],
         "summary": summary,
     }

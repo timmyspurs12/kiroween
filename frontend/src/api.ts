@@ -238,7 +238,12 @@ export interface ProjectFinding {
   hint: string | null;
   evidence: string | null;
   classification: string;
-  detail: { file?: string; target?: string; candidates?: string[]; members?: string[] } | null;
+  detail: {
+    file?: string; target?: string; candidates?: string[]; members?: string[];
+    receiver?: string; receiver_file?: string; receiver_line?: number;
+    receiver_origin?: string; via_copybooks?: string[];
+    statement_line?: number; program?: string;
+  } | null;
   finding_id: string;
 }
 
@@ -299,6 +304,76 @@ export interface CrossFileSection {
   >;
   assumptions: { id: string; topic: string; detail: string }[];
   coverage: Record<string, number>;
+  logical?: Record<string, LogicalModel>;
+}
+
+// ---- logical program data model (Milestone 5) ---------------------------
+
+export interface LogicalDecl {
+  decl_id: string;
+  name: string;
+  program: string;
+  source_file: string;
+  line: number | null;
+  col: number | null;
+  origin: "program" | "copybook";
+  via_copybooks: string[];
+  parent: string | null;
+  parent_id: string | null;
+  level: number | null;
+  section: string | null;
+  picture: string | null;
+  usage: string | null;
+  sign: string | null;
+  value: string | null;
+  byte_length: number | null;
+  status: "established" | "partial" | "unsupported";
+  unsupported_reason: string | null;
+  children: string[];
+  ancestor_groups: string[];
+  text: string | null;
+}
+
+export interface RefCandidate {
+  decl_id: string;
+  name: string;
+  source_file: string;
+  line: number | null;
+  col: number | null;
+  origin: "program" | "copybook";
+  via_copybooks: string[];
+  byte_length: number | null;
+  picture: string | null;
+  usage: string | null;
+  status: string;
+  level: number | null;
+  sign: string | null;
+  value: string | null;
+  unsupported_reason: string | null;
+}
+
+export interface LogicalRefRow {
+  name: string;
+  qualified_by: string | null;
+  role: string;
+  statement_line: number;
+  status: "resolved" | "ambiguous" | "unresolved" | "figurative-unsupported";
+  source_file?: string;
+  line?: number;
+  origin?: string;
+  decl_status?: string;
+  via_copybooks?: string[];
+  decl_id?: string;
+  candidates?: RefCandidate[];
+}
+
+export interface LogicalModel {
+  program: string;
+  declarations: LogicalDecl[];
+  references: LogicalRefRow[];
+  unsupported_structures: { structure: string; file: string; line: number | null; reason: string }[];
+  unsupported_statements: { structure: string; file: string; line: number; reason: string; text: string }[];
+  associations: { copybook: string; via: "direct" | "nested"; chain: string[] }[];
 }
 
 export interface ProjectImpact {

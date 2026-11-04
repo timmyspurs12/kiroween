@@ -1974,3 +1974,56 @@ button {
   padding: 0 var(--sp-1);
 }
 .pj-rel-kind.data { color: var(--state-blue); }
+
+/* ---- effective data / logical model (Milestone 5) ---- */
+.lg-tree {
+  display: grid;
+  gap: 2px;
+  margin-bottom: var(--sp-2);
+}
+.lg-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-1);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--inset);
+}
+.lg-level { color: var(--ink-dim); font-family: var(--mono); font-size: var(--fs-0); min-width: 2ch; text-align: right; }
+.lg-name { font-family: var(--mono); }
+.lg-pic { color: var(--ink-dim); font-family: var(--mono); font-size: var(--fs-0); }
+.lg-size { color: var(--ink-dim); font-family: var(--mono); font-size: var(--fs-0); }
+.lg-status {
+  font-size: var(--fs-0);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 var(--sp-1);
+  border: 1px solid currentColor;
+  border-radius: var(--r-sm);
+}
+.lg-status.established { color: var(--state-ok); }
+.lg-status.partial { color: var(--state-warn); }
+.lg-status.unsupported { color: var(--state-err); }
+.lg-origin {
+  font-size: var(--fs-0);
+  font-family: var(--mono);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink-dim);
+  cursor: pointer;
+  padding: 0 var(--sp-1);
+}
+.lg-origin:hover { color: var(--verdigris); border-color: var(--verdigris); }
+.lg-origin.copybook { color: var(--state-blue); }
+.lg-via { color: var(--ink-dim); font-size: var(--fs-0); }
+.lg-reason { color: var(--state-warn); font-size: var(--fs-0); }
+.lg-refs, .lg-unsup { display: grid; gap: var(--sp-1); margin-top: var(--sp-1); }
+.lg-ref-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: var(--fs-1);
+}

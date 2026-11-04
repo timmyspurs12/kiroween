@@ -187,6 +187,26 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   every cross-file finding reuses the project findings list (Diagnostic
   model), so classification + finding ids stay uniform.
 
+## 7c. Milestone 5 interface additions (effective data)
+
+- Programs gain an EFFECTIVE DATA (LOGICAL MODEL) section: declarations
+  from program source and established copybooks in one deterministic
+  table — level, name, PICTURE/USAGE, byte size, status chip
+  (established / partial / unsupported with reason), and an origin
+  button that opens the declaring file at its original line (copybook
+  origins in the state-blue accent).
+- Nested COPY chains render on the row (`via A > B`); associations show
+  as COPY chips with direct/nested labelling.
+- Reference rows summarise resolved / ambiguous / unresolved data
+  references; ambiguous references list every candidate with its origin
+  — never a silent first-match pick.
+- Unsupported structures and statements (REDEFINES, OCCURS, level-88,
+  unsupported USAGE, non-MOVE data verbs) are listed with reasons and
+  source evidence instead of being omitted or guessed.
+- Coverage adds effective-declaration and reference counts, including
+  copybook-origin findings. Semantic findings involving copybook data
+  cite the copybook file:line in the findings list.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

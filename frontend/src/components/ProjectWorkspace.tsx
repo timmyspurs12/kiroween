@@ -4,6 +4,7 @@ import {
   ProjectFile,
   CrossFileMapping,
   CrossFilePosition,
+  LogicalModel,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -166,6 +167,115 @@ export function ProjectWorkspace(props: {
     });
   };
 
+function DeclTree({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => void }) {
+  const rows = [...m.declarations].sort((a, b) => {
+    const da = a.source_file.localeCompare(b.source_file);
+    return da !== 0 ? da : (a.line ?? 0) - (b.line ?? 0);
+  });
+  return (
+    <div className="lg-tree">
+      {rows.map((d) => {
+        const depth = d.ancestor_groups.length;
+        const fileShown = d.source_file;
+        return (
+          <div className="lg-row" key={d.decl_id}
+               style={{ paddingLeft: `calc(var(--sp-3) * ${depth})` }}>
+            <span className="lg-level">{d.level}</span>
+            <span className="lg-name">{d.name}</span>
+            {d.picture && <span className="lg-pic">PIC {d.picture}</span>}
+            {d.usage === "comp3" && <span className="lg-pic">COMP-3</span>}
+            {d.usage && d.usage.startsWith("unsupported:") && (
+              <span className="lg-pic">{d.usage.split(":")[1]}</span>
+            )}
+            {d.byte_length != null && (
+              <span className="lg-size">{d.byte_length} B</span>
+            )}
+            <span className={`lg-status ${d.status}`}>
+              {d.status}
+            </span>
+            <button
+              className={`lg-origin ${d.origin}`}
+              onClick={() => onSelect(fileShown)}
+              title={`Open ${fileShown}`}
+            >
+              {d.origin === "copybook" ? "copybook" : "program"}
+              {" "}
+              {fileShown}{d.line != null ? `:L${d.line}` : ""}
+            </button>
+            {d.via_copybooks.length > 1 && (
+              <span className="lg-via">
+                via {d.via_copybooks.join(" > ")}
+              </span>
+            )}
+            {d.unsupported_reason && (
+              <span className="lg-reason" title={d.unsupported_reason}>
+                {d.unsupported_reason}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EffectiveData({ m, onSelect }: { m: LogicalModel; onSelect: (id: string) => void }) {
+  const counts = { resolved: 0, ambiguous: 0, unresolved: 0 };
+  for (const r of m.references) {
+    if (r.status in counts) counts[r.status as keyof typeof counts] += 1;
+  }
+  return (
+    <>
+      {m.associations.length > 0 && (
+        <div className="xf-copybooks">
+          {m.associations.map((a, i) => (
+            <span className="xf-copybook" key={i}>
+              COPY {a.copybook} ({a.via}
+              {a.via === "nested" ? `: ${a.chain.join(" > ")}` : ""})
+            </span>
+          ))}
+        </div>
+      )}
+      <DeclTree m={m} onSelect={onSelect} />
+      {m.references.length > 0 && (
+        <div className="lg-refs">
+          <span className="ov-note">
+            references: {counts.resolved} resolved · {counts.ambiguous}{" "}
+            ambiguous · {counts.unresolved} unresolved
+          </span>
+          {m.references.filter((r) => r.status === "ambiguous").map((r, i) => (
+            <div className="lg-ref-row" key={i}>
+              <span className="lg-name">{r.name}</span>
+              <span className="lg-reason">
+                ambiguous
+                {r.qualified_by ? ` under ${r.qualified_by}` : ""} —
+                candidates: {(r.candidates ?? [])
+                  .map((c) => `${c.source_file}:L${c.line} (${c.origin})`)
+                  .join("; ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(m.unsupported_structures.length > 0 ||
+        m.unsupported_statements.length > 0) && (
+        <div className="lg-unsup">
+          {[...m.unsupported_structures, ...m.unsupported_statements].map(
+            (u, i) => (
+              <div className="lg-ref-row" key={i}>
+                <span className="lg-name">{u.structure}</span>
+                <span className="lg-reason">
+                  {u.file}{u.line != null ? `:L${u.line}` : ""} — {u.reason}
+                </span>
+              </div>
+            ),
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function DeclRef({ d }: { d: { origin: string; file: string | null; line: number | null; byte_length: number | null; picture?: string | null } | null | undefined }) {
   if (!d) return <span className="xf-decl missing">no declaration found</span>;
   const where = [d.file, d.line != null ? `L${d.line}` : null]
@@ -257,6 +367,9 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
   const selPerFile = env && selected ? env.per_file[selected] : undefined;
   const xf = env?.cross_file;
   const selInterface = xf && selected ? xf.interfaces[selected] : undefined;
+  const selLogical: LogicalModel | undefined =
+    xf && selected ? xf.logical?.[selected] : undefined;
+  const xfCov = env?.cross_file?.coverage;
   const outMappings = useMemo(
     () => (xf && selected ? xf.mappings.filter((m) => m.from === selected) : []),
     [xf, selected],
@@ -501,6 +614,19 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
               </div>
             )}
 
+            {selLogical && selLogical.declarations.length > 0 && (
+              <div className="ov-section">
+                <h3>EFFECTIVE DATA (LOGICAL MODEL)</h3>
+                <EffectiveData m={selLogical} onSelect={setSelected} />
+                <p className="ov-note">
+                  Effective declarations combine this program&apos;s own
+                  source with established COPY associations; every row keeps
+                  its original file and line. Unsupported structures are
+                  recorded, never silently sized or omitted.
+                </p>
+              </div>
+            )}
+
             {xf && selected && (selInterface || outMappings.length > 0 || inMappings.length > 0) && (
               <div className="ov-section">
                 <h3>CROSS-FILE DATA</h3>
@@ -608,6 +734,29 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                       incomplete ·{" "}
                       {env.cross_file.coverage.mappings_unresolved}{" "}
                       unresolved
+                    </dd>
+                  </>
+                )}
+                {xfCov && xfCov.logical_programs != null && (
+                  <>
+                    <dt>Effective declarations</dt>
+                    <dd>
+                      {xfCov.logical_declarations}{" "}
+                      ({xfCov.logical_copybook_origin_declarations}{" "}
+                      from copybooks ·{" "}
+                      {xfCov.logical_unsupported_declarations}{" "}
+                      unsupported)
+                    </dd>
+                    <dt>Data references</dt>
+                    <dd>
+                      {xfCov.references_resolved}{" "}
+                      resolved ·{" "}
+                      {xfCov.references_ambiguous}{" "}
+                      ambiguous ·{" "}
+                      {xfCov.references_unresolved}{" "}
+                      unresolved ·{" "}
+                      {xfCov.copybook_semantic_findings}{" "}
+                      copybook-origin finding(s)
                     </dd>
                   </>
                 )}

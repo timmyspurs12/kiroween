@@ -75,6 +75,32 @@ neither it nor the dependency view claims verified runtime impact. Findings
 reuse the Diagnostic model; schema grows additively (project envelope
 `schema_version` 1 → 2).
 
+### Copybook-aware semantic analysis (Milestone 5)
+
+Programs that COPY a copybook are outside the frozen grammar, so the
+parser cannot analyse them directly. NecroSpec closes this gap without
+textual expansion: each program gets a **logical data model** — its own
+declarations (parser-backed for subset programs, scanned otherwise) plus
+the declarations of directly and nested-included copybooks, but only
+where the COPY relationship was established against project files
+(never by name matching, never from ambiguous/missing references, never
+for COPY REPLACING). Every effective declaration keeps full provenance:
+original file, line, column, origin (`program`/`copybook`), COPY chain,
+and an `established`/`partial`/`unsupported` status — unknown storage
+(REDEFINES, OCCURS, level-88, unsupported USAGE such as COMP) is never
+treated as zero and never silently omitted. Name resolution is exact
+plus OF/IN qualification through parent groups; duplicate names are
+never merged and never resolved by first match — an ambiguous reference
+is reported with its candidates (`XFS_REF_AMBIGUOUS`). For programs
+outside the frozen subset, semantic participation currently covers one
+scanned statement shape, `MOVE src TO dst…`: capacity, precision, sign
+and SPACES-to-numeric rules identical to the single-file engine, with
+findings reusing the SEM_* codes and citing the receiver's **original
+copybook location**. CALL USING analysis resolves copybook-defined
+arguments and parameters through the same model. Project envelope grows
+additively (schema 2 → 3: `cross_file.logical`); the single-file
+response is unchanged.
+
 ### Command-line use (batch / CI)
 
 ```bash

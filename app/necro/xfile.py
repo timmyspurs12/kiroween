@@ -43,6 +43,7 @@ from .project import _MAX_STATEMENT_WINDOW, _content, _indicator_ok
 XFD_ARG_COUNT_MISMATCH = "XFD_ARG_COUNT_MISMATCH"
 XFD_PARAM_SIZE_MISMATCH = "XFD_PARAM_SIZE_MISMATCH"
 XFD_PARAM_DECL_UNRESOLVED = "XFD_PARAM_DECL_UNRESOLVED"
+XFD_PARAM_DECL_AMBIGUOUS = "XFD_PARAM_DECL_AMBIGUOUS"
 
 from . import diagnostics as _diagmod  # noqa: E402
 
@@ -58,6 +59,9 @@ _diagmod.HINTS.update({
     XFD_PARAM_DECL_UNRESOLVED:
         "Ensure the receiving parameter is declared in the receiver's "
         "LINKAGE SECTION (directly or via a COPY included in the project).",
+    XFD_PARAM_DECL_AMBIGUOUS:
+        "Qualify the argument (item OF group) or rename one of the "
+        "duplicate declarations so the passed item is unambiguous.",
 })
 
 XFD_ASSUMPTIONS = [
@@ -116,6 +120,9 @@ _PIC_RE = re.compile(r"\bPIC(?:TURE)?\s+(?:IS\s+)?(?P<pic>[A-Za-z0-9()]+)",
 _USAGE_COMP3_RE = re.compile(r"\b(?:COMP-3|COMPUTATIONAL-3|PACKED-DECIMAL)\b",
                              re.IGNORECASE)
 _USAGE_DISPLAY_RE = re.compile(r"\bDISPLAY\b", re.IGNORECASE)
+_USAGE_OTHER_RE = re.compile(
+    r"\b(COMP|COMPUTATIONAL(?:-[1-5X])?|BINARY|INDEX|POINTER)\b",
+    re.IGNORECASE)
 _SIGN_SEP_RE = re.compile(
     r"SIGN\s+IS\s+(?P<pos>LEADING|TRAILING)\s+SEPARATE", re.IGNORECASE)
 _VALUE_RE = re.compile(r"\bVALUE\s+(?P<val>[^.]+)", re.IGNORECASE)
@@ -196,6 +203,12 @@ def scan_declarations(file_id: str, text: str) -> List[dict]:
             usage = "comp3"
         elif _USAGE_DISPLAY_RE.search(rest):
             usage = "display"
+        elif True:
+            om = _USAGE_OTHER_RE.search(rest)
+            if om:
+                # unsupported USAGE: recorded, never sized (unknown
+                # storage is never treated as zero)
+                usage = "unsupported:" + om.group(1).upper()
         sign = None
         gm = _SIGN_SEP_RE.search(rest)
         if gm:
@@ -423,43 +436,16 @@ def scan_proc_using(file_id: str, text: str) -> Optional[dict]:
 # cross-file analysis
 # =========================================================================
 
-def _parsed_declarations(result: dict, file_id: str) -> Dict[str, dict]:
-    """Flatten the semantic dictionary of a parsed program into
-    name -> declaration (uniform shape with scanned entries)."""
-    out: Dict[str, dict] = {}
-
-    def walk(e, parent_section):
-        d = {
-            "file": file_id,
-            "name": e["name"],
-            "level": e["level"],
-            "section": e.get("section", parent_section),
-            "line": e["line"],
-            "col": e["col"],
-            "picture": e.get("picture"),
-            "usage": e.get("usage"),
-            "sign": e.get("sign"),
-            "value": e.get("value"),
-            "byte_length": e.get("byte_length"),
-            "origin": "parsed",
-            "unsupported_clause": None,
-            "children": [],
-            "text": None,
-        }
-        out[d["name"].upper()] = d
-        for c in e.get("children", []):
-            walk(c, d["section"])
-    for root in result.get("symbols", []) or []:
-        walk(root, root.get("section", ""))
-    return out
-
-
 def _copybook_associations(edges: List[dict]) -> Dict[str, List[dict]]:
     """program -> [{copybook, via}] for resolved COPY edges, including
     nested copybook->copybook inclusion (cycle-guarded, chains recorded)."""
     direct: Dict[str, List[Tuple[str, str]]] = {}
     for e in edges:
         if e["kind"] == "copy" and e["resolution"] == "resolved" and e["to"]:
+            if e.get("form") == "replacing":
+                # COPY REPLACING: text-replaced names cannot be
+                # established, so this copybook contributes nothing
+                continue
             direct.setdefault(e["from"], []).append((e["to"], "direct"))
             # copybooks including copybooks
             direct.setdefault(e["to"], [])  # ensure key exists
@@ -494,31 +480,140 @@ def _copybook_associations(edges: List[dict]) -> Dict[str, List[dict]]:
     return assoc
 
 
+def _parsed_tree(result: dict, file_id: str) -> List[dict]:
+    """Symbols tree of a parsed program in scanned-entry shape
+    (hierarchy preserved; origins marked parsed)."""
+    def conv(e: dict) -> dict:
+        usage = e.get("usage")
+        if usage not in (None, "comp3", "display"):
+            usage = "unsupported:%s" % usage
+        return {
+            "file": file_id,
+            "name": e["name"],
+            "level": e.get("level"),
+            "section": e.get("section"),
+            "line": e.get("line"),
+            "col": e.get("col"),
+            "picture": e.get("picture"),
+            "usage": usage,
+            "sign": e.get("sign"),
+            "value": e.get("value"),
+            "byte_length": e.get("byte_length"),
+            "origin": "parsed",
+            "unsupported_clause": None,
+            "children": [conv(c) for c in (e.get("children") or [])],
+            "text": None,
+        }
+    return [conv(root) for root in (result.get("symbols") or [])]
+
+
+def collect_declarations(files: List[dict], contents: Dict[str, str],
+                         edges: List[dict],
+                         per_file: Dict[str, dict]) -> dict:
+    """Declaration trees + flat index + COPY associations for the whole
+    project (shared by cross-file mapping and the logical data model).
+    trees: file -> declaration tree roots (parsed when analyzed, scanned
+    otherwise); decls: file -> flat {NAME: entry}; assoc: program ->
+    associated copybooks (REPLACING excluded); replacing: program ->
+    copybooks included with COPY REPLACING (no declarations)."""
+    trees: Dict[str, List[dict]] = {}
+    decls: Dict[str, Dict[str, dict]] = {}
+    for fid in sorted(contents):
+        pf = per_file.get(fid) or {}
+        if pf.get("status") == "analyzed" and pf.get("result"):
+            roots = _parsed_tree(pf["result"], fid)
+        else:
+            roots = scan_declarations(fid, contents[fid])
+        trees[fid] = roots
+        decls[fid] = {d["name"].upper(): d for d in _flatten(roots)}
+    assoc = _copybook_associations(edges)
+    replacing: Dict[str, List[dict]] = {}
+    for e in edges:
+        if (e["kind"] == "copy" and e["resolution"] == "resolved"
+                and e["to"] and e.get("form") == "replacing"):
+            replacing.setdefault(e["from"], [])
+            if e["to"] not in replacing[e["from"]]:
+                replacing[e["from"]].append(e["to"])
+    for k in replacing:
+        replacing[k].sort()
+    by_ident = {}
+    for roots in trees.values():
+        for d in _flatten(roots):
+            by_ident[(d["file"], d["name"].upper(), d.get("line"),
+                      d.get("col"))] = d
+    # programs that COPY the same copybook more than once (declaration
+    # insertion must happen exactly once)
+    copy_counts: Dict[Tuple[str, str], int] = {}
+    for e in edges:
+        if (e["kind"] == "copy" and e["resolution"] == "resolved"
+                and e["to"] and e.get("form") != "replacing"):
+            key = (e["from"], e["to"])
+            copy_counts[key] = copy_counts.get(key, 0) + 1
+    dupe_copies: Dict[str, List[str]] = {}
+    for (frm, to), n in copy_counts.items():
+        if n > 1:
+            dupe_copies.setdefault(frm, []).append(to)
+    for k in dupe_copies:
+        dupe_copies[k].sort()
+    return {"trees": trees, "decls": decls, "assoc": assoc,
+            "replacing": replacing, "by_ident": by_ident,
+            "dupe_copies": dupe_copies}
+
+
 def analyze_cross_file(files: List[dict], contents: Dict[str, str],
                        edges: List[dict],
-                       per_file: Dict[str, dict]) -> Tuple[dict, List[Diagnostic]]:
+                       per_file: Dict[str, dict],
+                       rel: Optional[dict] = None,
+                       models: Optional[dict] = None,
+                       ) -> Tuple[dict, List[Diagnostic]]:
     """Build the cross-file section (interfaces, mappings, copybook
-    declarations) and its findings. Deterministic."""
+    declarations) and its findings. Deterministic. When `models` (the
+    logical per-program data models) are supplied, argument/parameter
+    declarations resolve through them: ambiguity is reported, never
+    silently resolved by first match."""
     findings: List[Diagnostic] = []
     by_id = {f["file_id"]: f for f in files}
     programs = sorted(f["file_id"] for f in files if f["kind"] == "program")
     copybooks = sorted(f["file_id"] for f in files if f["kind"] == "copybook")
 
-    # ---- declarations ----------------------------------------------------
-    decls: Dict[str, Dict[str, dict]] = {}
-    for fid in sorted(contents):
-        parsed = None
-        pf = per_file.get(fid) or {}
-        if pf.get("status") == "analyzed" and pf.get("result"):
-            parsed = _parsed_declarations(pf["result"], fid)
-        if parsed:
-            decls[fid] = parsed
-        else:
-            decls[fid] = {
-                d["name"].upper(): d
-                for d in _flatten(scan_declarations(fid, contents[fid]))
-            }
-    assoc = _copybook_associations(edges)
+    if rel is None:
+        rel = collect_declarations(files, contents, edges, per_file)
+    decls = rel["decls"]
+    assoc = rel["assoc"]
+
+    def resolve_decl(fid: str, name: str) -> Tuple[Optional[dict],
+                                                   Optional[dict]]:
+        """(decl_ref, ambiguity) via the logical model when available."""
+        if models is not None and fid in models:
+            from necro.logical import resolve_name
+            r = resolve_name(models[fid], name)
+            if r["status"] == "resolved":
+                d = _decl_ref(decls.get(fid, {}).get(name.upper()))
+                if d is None:
+                    for a in assoc.get(fid, []):
+                        d = _decl_ref(decls.get(a["copybook"], {})
+                                      .get(name.upper()))
+                        if d is not None:
+                            break
+                if d is not None:
+                    d = dict(d)
+                    d["decl_id"] = r["candidates"][0]["decl_id"]
+                    d["origin_kind"] = r["candidates"][0]["origin"]
+                    d["via_copybooks"] = \
+                        r["candidates"][0]["via_copybooks"]
+                return d, None
+            if r["status"] == "ambiguous":
+                return None, {"candidates": r["candidates"]}
+            return None, None
+        # legacy first-match fallback (no logical models supplied)
+        d = decls.get(fid, {}).get(name.upper())
+        if d:
+            return _decl_ref(d), None
+        for a in assoc.get(fid, []):
+            d = decls.get(a["copybook"], {}).get(name.upper())
+            if d:
+                return _decl_ref(d), None
+        return None, None
 
     def lookup_decl(fid: str, name: str) -> Optional[dict]:
         d = decls.get(fid, {}).get(name.upper())
@@ -547,13 +642,16 @@ def analyze_cross_file(files: List[dict], contents: Dict[str, str],
             origin = "scanned"
         param_rows = []
         for p in params:
-            d = lookup_decl(fid, p["name"])
-            param_rows.append({
+            d, amb = resolve_decl(fid, p["name"])
+            row = {
                 "name": p["name"],
                 "line": p["line"],
                 "col": p["col"],
-                "declaration": _decl_ref(d) if d else None,
-            })
+                "declaration": d,
+            }
+            if amb is not None:
+                row["ambiguous_candidates"] = amb["candidates"]
+            param_rows.append(row)
         interfaces[fid] = {
             "file": fid,
             "origin": origin,
@@ -608,13 +706,32 @@ def analyze_cross_file(files: List[dict], contents: Dict[str, str],
                 })
                 pos_statuses.append("incomplete")
                 continue
-            a_decl = lookup_decl(e["from"], arg["name"])
+            a_decl, a_amb = resolve_decl(e["from"], arg["name"])
+            if a_amb is not None:
+                findings.append(_diag(
+                    SEVERITY_WARNING, XFD_PARAM_DECL_AMBIGUOUS,
+                    (f"CALL argument {arg['name']} at {e['from']} line "
+                     f"{e['line']} matches {len(a_amb['candidates'])} "
+                     f"declarations in {e['from']}'s effective model; the "
+                     f"passed item cannot be established without "
+                     f"qualification."),
+                    e["line"], e["col"],
+                    "Candidates: " + "; ".join(
+                        f"{c['source_file']}:L{c['line']} ({c['origin']})"
+                        for c in a_amb["candidates"]),
+                    detail={"caller_file": e["from"],
+                            "receiver_file": receiver,
+                            "caller_item": arg["name"],
+                            "candidates": a_amb["candidates"]}))
+                pos_statuses.append("incomplete")
             r_decl = prm["declaration"]
             row = {
                 "position": idx + 1,
                 "status": "established",
                 "caller": arg,
-                "caller_decl": _decl_ref(a_decl) if a_decl else None,
+                "caller_decl": a_decl,
+                "caller_ambiguous_candidates":
+                    (a_amb or {}).get("candidates"),
                 "receiver": {"name": prm["name"], "line": prm["line"],
                              "col": prm["col"]},
                 "receiver_decl": r_decl,
