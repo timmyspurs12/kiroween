@@ -2135,3 +2135,15 @@ button {
 .xf-status.partial { color: var(--state-warn); }
 .rule-card.established_structure { border-left-color: var(--accent); }
 .rule-card.partial { border-left-color: var(--state-warn); }
+
+.ov-file-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.ov-source-link {
+  color: var(--text-faint);
+  font-size: var(--fs-0);
+  border-bottom: 1px dotted var(--edge-strong);
+}
+.ov-source-link:hover { color: var(--accent-hi); }

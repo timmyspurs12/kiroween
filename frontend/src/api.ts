@@ -633,8 +633,90 @@ export interface ProjectImpact {
   note: string;
 }
 
+// ---- project intelligence overview (Milestone 9) ---------------------------
+
+export interface OverviewCoverageDim {
+  dimension: string;
+  covered: number;
+  denominator: number;
+  note: string;
+}
+
+export interface OverviewFinding {
+  finding_id: string; code: string; severity: string;
+  file: string | null; line: number | null; col: number | null;
+  message: string | null; evidence: string | null; hint: string | null;
+}
+
+export interface ProjectOverview {
+  inventory: {
+    files_total: number; files_indexed: number; files_skipped: number;
+    programs_total: number; copybooks_total: number; files_rejected: number;
+    programs_analyzed: number; programs_rejected: number;
+    programs_partial_analysis: number; programs_unsupported: number;
+    program_files_partial_analysis: string[]; program_files_unsupported: string[];
+    programs_with_dataflow: number; logical_programs: number;
+    copybooks_indexed: number;
+    program_files_analyzed: string[]; program_files_rejected: string[];
+    note: string;
+  };
+  dependencies: {
+    total: number; call_relationships: number; copy_relationships: number;
+    resolved: number; missing: number; ambiguous: number; dynamic: number;
+    unresolved_other: number; unresolved_total: number;
+    cycles: string[][];
+    resolved_edges: { from: string; to: string | null; target: string; kind: string; resolution: string; line: number | null; col: number | null; evidence: string | null }[];
+    note: string;
+  };
+  data: {
+    mappings_total: number; mappings_established: number;
+    mappings_incomplete: number; mappings_unresolved: number;
+    cross_program_links_total: number;
+    cross_program_links_with_resolved_declarations: number;
+    operations_total: number; operations_established: number;
+    conditions_total: number; logical_declarations: number;
+    copybook_origin_declarations: number;
+    dynamic_call_targets: { caller: string; target: string | null; line: number | null; evidence: string | null }[];
+    established_mappings: { from: string; to: string; argument: string | null; parameter: string | null; line: number | null; status: string; evidence: string | null }[];
+    cross_program_flows: { caller: string; callee: string; argument: string | null; parameter: string | null; mapping_status: string | null; status: string | null; call_line: number | null; call_evidence: string | null; caller_writes: { op_id: string; line: number; evidence: string }[]; callee_reads: { op_id: string; line: number; evidence: string }[] }[];
+    note: string;
+  };
+  decisions_rules: {
+    decisions_total: number; decisions_with_else: number;
+    nested_decisions: number; conditions_total: number;
+    rules_total: number; rules_established_structure: number;
+    rules_partial: number; rules_unsupported: number;
+    programs_without_candidates: string[];
+    per_program: { program: string; decisions: number; candidates: number; candidates_partial: number; unsupported_structures: number }[];
+    candidates: { program: string; rule_id: string; decision_id: string | null; line: number | null; end_line: number | null; status: string | null; condition_text: string | null; then_ops: string[]; else_ops: string[]; origin: string | null }[];
+    disclaimer: string;
+  };
+  register: {
+    violations: OverviewFinding[];
+    violations_total: number;
+    risks_total: number;
+    risks_by_code: { code: string; count: number; finding_ids: string[]; locations: { file: string | null; line: number | null }[]; findings: OverviewFinding[] }[];
+    notes_total: number;
+    notes: OverviewFinding[];
+    unsupported_structures: { file: string; line: number | null; structure: string; reason: string | null }[];
+    unresolved_dependencies: { from: string; to: string | null; target: string; kind: string; resolution: string; line: number | null; evidence: string | null }[];
+    ambiguous_dependencies: { from: string; to: string | null; target: string; kind: string; resolution: string; line: number | null; col: number | null; evidence: string | null }[];
+    incomplete_mappings: { from: string; to: string | null; argument: string | null; parameter: string | null; line: number | null; status: string; evidence: string | null }[];
+    human_review_total: number;
+    note: string;
+  };
+  coverage: {
+    dimensions: OverviewCoverageDim[];
+    unsupported_constructs_total: number;
+    unresolved_relationships_total: number;
+    assumptions_total: number;
+    note: string;
+  };
+  note: string;
+}
+
 export interface ProjectEnvelope {
-  schema_version: 1 | 2;
+  schema_version: 7;
   project: { name: string };
   files: ProjectFile[];
   skipped: { path: string; reason: string; code: string }[];
@@ -644,6 +726,7 @@ export interface ProjectEnvelope {
   per_file: Record<string, { status: string; reason: string | null; result?: AnalysisResponse }>;
   findings: ProjectFinding[];
   cross_file?: CrossFileSection;
+  overview: ProjectOverview;
   coverage: Record<string, number | Record<string, number>>;
   assumptions: { id: string; topic: string; detail: string }[];
   summary: { ok: boolean; errors: number; warnings: number; infos: number; programs: number; copybooks: number };

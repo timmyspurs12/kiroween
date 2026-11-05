@@ -11,6 +11,7 @@ import {
   DecisionRecord,
   RuleCandidate,
   RuleItem,
+  ProjectOverview,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -913,6 +914,341 @@ function RuleCandidatesView({ flow, selRule, onSelect }: {
   );
 }
 
+// ---- project intelligence overview (Milestone 9) ----------------------------
+
+function ProgramLink({ id, onSelect, onOpenSource, sourcesRef }: {
+  id: string;
+  onSelect: (id: string) => void;
+  onOpenSource: (path: string, content: string) => void;
+  sourcesRef?: Record<string, string>;
+}) {
+  return (
+    <span className="ov-file-link">
+      <button className="ref-decl" onClick={() => onSelect(id)} title={`Inspect ${id}`}>
+        {id}
+      </button>
+      {sourcesRef?.[id] != null && (
+        <button className="ov-source-link" onClick={() => onOpenSource(id, sourcesRef[id] ?? "")}
+          title={`Open source for ${id}`}>
+          open source
+        </button>
+      )}
+    </span>
+  );
+}
+
+function ProjectOverviewView({ ov, assumptions, onSelect, onOpenSource, sourcesRef }: {
+  ov: ProjectOverview;
+  assumptions: { id: string; topic: string; detail: string }[];
+  onSelect: (id: string) => void;
+  onOpenSource: (path: string, content: string) => void;
+  sourcesRef?: Record<string, string>;
+}) {
+  const inv = ov.inventory;
+  const deps = ov.dependencies;
+  const data = ov.data;
+  const dr = ov.decisions_rules;
+  const reg = ov.register;
+  const cov = ov.coverage;
+  return (
+    <>
+      <div className="ov-section">
+        <h3>PROJECT OVERVIEW</h3>
+        <p className="ov-note">{ov.note}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>APPLICATION INVENTORY</h3>
+        <dl className="ov-kv">
+          <dt>Discovered files</dt><dd>{inv.files_total}</dd>
+          <dt>COBOL programs</dt><dd>{inv.programs_total}</dd>
+          <dt>Copybooks</dt><dd>{inv.copybooks_total}</dd>
+          <dt>Rejected (frozen-grammar parse)</dt><dd>{inv.files_rejected}</dd>
+          <dt>Skipped / unreadable</dt><dd>{inv.files_skipped}</dd>
+          <dt>Accepted by frozen grammar (subset)</dt><dd>{inv.programs_analyzed}</dd>
+          <dt>Grammar rejected; supplemental scan ran</dt><dd>{inv.programs_partial_analysis}</dd>
+          <dt>Programs with unsupported structures</dt><dd>{inv.programs_unsupported}</dd>
+          <dt>Programs with statement scans</dt><dd>{inv.programs_with_dataflow}</dd>
+        </dl>
+        <p className="ov-note">{inv.note}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>DEPENDENCIES</h3>
+        <dl className="ov-kv">
+          <dt>Relationships (edges)</dt><dd>{deps.total}</dd>
+          <dt>Program CALLs</dt><dd>{deps.call_relationships}</dd>
+          <dt>Program → copybook</dt><dd>{deps.copy_relationships}</dd>
+          <dt>Resolved</dt><dd>{deps.resolved}</dd>
+          <dt>Missing</dt><dd>{deps.missing}</dd>
+          <dt>Ambiguous</dt><dd>{deps.ambiguous}</dd>
+          <dt>Dynamic CALL targets</dt><dd>{deps.dynamic}</dd>
+          <dt>Cycles</dt><dd>{deps.cycles.length}</dd>
+        </dl>
+        {deps.cycles.length > 0 && (
+          <div className="lg-unsup">
+            {deps.cycles.map((c, i) => (
+              <div className="lg-ref-row" key={i}>
+                <span className="lg-name">cycle</span>
+                <span className="xf-pos-item">{c.join(" ⇄ ")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {deps.resolved_edges.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">resolved dependency evidence</span>
+            {deps.resolved_edges.map((e, i) => (
+              <div className="lg-ref-row" key={`${e.from}:${e.line}:${i}`}>
+                <ProgramLink id={e.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">→ {e.to ?? e.target} ({e.kind}, L{e.line})</span>
+                {e.to && <ProgramLink id={e.to} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+                <span className="pj-rel-ev">{e.evidence}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="ov-note">{deps.note}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>DATA &amp; CROSS-PROGRAM FLOW</h3>
+        <dl className="ov-kv">
+          <dt>CALL USING mappings</dt>
+          <dd>{data.mappings_total} ({data.mappings_established} established ·{" "}
+            {data.mappings_incomplete} incomplete · {data.mappings_unresolved} unresolved)</dd>
+          <dt>CALL rows with resolved declarations</dt>
+          <dd>{data.cross_program_links_with_resolved_declarations} / {data.cross_program_links_total} (mapping status shown separately)</dd>
+          <dt>Recorded operations</dt>
+          <dd>{data.operations_established} / {data.operations_total}</dd>
+          <dt>Conditions</dt><dd>{data.conditions_total}</dd>
+          <dt>Logical declarations</dt><dd>{data.logical_declarations}</dd>
+          <dt>Copybook-origin declarations</dt><dd>{data.copybook_origin_declarations}</dd>
+        </dl>
+        {data.dynamic_call_targets.length > 0 && (
+          <div className="lg-unsup">
+            {data.dynamic_call_targets.map((d, i) => (
+              <div className="lg-ref-row" key={i}>
+                <span className="lg-name">dynamic CALL</span>
+                <ProgramLink id={d.caller} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">
+                  → {d.target ?? "unresolved target"} (L{d.line})
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {data.cross_program_flows.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">producer / consumer evidence across CALLs</span>
+            {data.cross_program_flows.map((f, i) => (
+              <div className="lg-ref-row" key={`${f.caller}:${f.call_line}:${i}`}>
+                <ProgramLink id={f.caller} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">→ {f.callee} · {f.argument ?? "argument"} → {f.parameter ?? "parameter"} (L{f.call_line})</span>
+                <span className={`xf-status ${f.mapping_status ?? "unresolved"}`}>{f.mapping_status ?? "unresolved mapping"}</span>
+                <span className="pj-rel-ev">{f.call_evidence}</span>
+                {[...f.caller_writes.map((x) => ({ ...x, side: "producer" })),
+                  ...f.callee_reads.map((x) => ({ ...x, side: "consumer" }))].map((op) => (
+                  <span className="pj-rel-ev" key={`${op.side}:${op.op_id}`}>
+                    {op.side} op {op.op_id} at L{op.line}: {op.evidence}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+        {data.established_mappings.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">established structural mappings</span>
+            {data.established_mappings.map((m, i) => (
+              <div className="lg-ref-row" key={`${m.from}:${m.line}:${i}`}>
+                <ProgramLink id={m.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">→ {m.to} (L{m.line})</span>
+                <span className="pj-rel-ev">{m.evidence}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {reg.incomplete_mappings.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">incomplete / unresolved mappings</span>
+            {reg.incomplete_mappings.map((m, i) => (
+              <div className="lg-ref-row" key={`${m.from}:${m.line}:${i}`}>
+                <ProgramLink id={m.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">{m.status} → {m.to ?? "unknown receiver"} (L{m.line})</span>
+                <span className="pj-rel-ev">{m.evidence}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="ov-note">{data.note}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>DECISIONS &amp; RULE CANDIDATES</h3>
+        <dl className="ov-kv">
+          <dt>Decision structures</dt>
+          <dd>{dr.decisions_total} ({dr.decisions_with_else} with ELSE · {dr.nested_decisions} nested)</dd>
+          <dt>Rule candidates</dt>
+          <dd>{dr.rules_total} ({dr.rules_established_structure} established structure ·{" "}
+            {dr.rules_partial} partial · {dr.rules_unsupported} unsupported)</dd>
+          <dt>Programs without candidates</dt><dd>{dr.programs_without_candidates.length}</dd>
+        </dl>
+        {dr.programs_without_candidates.length > 0 && (
+          <div className="lg-unsup">
+            {dr.programs_without_candidates.map((fid) => (
+              <div className="lg-ref-row" key={fid}>
+                <ProgramLink id={fid} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="lg-reason">no supported rule candidates established</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {dr.candidates.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">rule candidate evidence</span>
+            {dr.candidates.map((c) => (
+              <div className="lg-ref-row" key={c.rule_id}>
+                <ProgramLink id={c.program} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className={`rule-status ${c.status ?? "partial"}`}>{c.status ?? "status unavailable"}</span>
+                <span className="xf-pos-item">{c.rule_id} · L{c.line}{c.end_line && c.end_line !== c.line ? `–${c.end_line}` : ""}</span>
+                <span className="lg-reason">{c.condition_text}</span>
+                <span className="pj-rel-ev">THEN ops: {c.then_ops.join(", ") || "none recorded"} · ELSE ops: {c.else_ops.join(", ") || "none recorded"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="lg-unsup">
+          <span className="df-block-title">per-program decision/rule counts</span>
+          {dr.per_program.map((p) => (
+            <div className="lg-ref-row" key={p.program}>
+              <ProgramLink id={p.program} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+              <span className="xf-pos-item">{p.decisions} decisions · {p.candidates} candidates ({p.candidates_partial} partial) · {p.unsupported_structures} unsupported</span>
+            </div>
+          ))}
+        </div>
+        <p className="ov-note">{dr.disclaimer}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>INVESTIGATION REGISTER</h3>
+        <dl className="ov-kv">
+          <dt>Violations</dt><dd>{reg.violations_total}</dd>
+          <dt>Risks (human review)</dt><dd>{reg.risks_total}</dd>
+          <dt>Notes</dt><dd>{reg.notes_total}</dd>
+        </dl>
+        {reg.violations.map((v) => (
+          <div className="lg-ref-row" key={v.finding_id}>
+            <span className="lg-name">{v.code} · {v.finding_id}</span>
+            {v.file ? <ProgramLink id={v.file} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} /> : <span className="lg-reason">project-wide; no single source location</span>}
+            <span className="xf-pos-item">{v.line ? `L${v.line}` : "location unavailable"}</span>
+            <span className="lg-reason">{v.message}</span>
+            {v.evidence && <span className="pj-rel-ev">{v.evidence}</span>}
+          </div>
+        ))}
+        {reg.risks_by_code.map((group) => (
+          <div className="lg-unsup" key={group.code}>
+            <span className="df-block-title">{group.code} · {group.count} finding{group.count === 1 ? "" : "s"}</span>
+            {group.findings.map((f) => (
+              <div className="lg-ref-row" key={f.finding_id}>
+                <span className="lg-name">{f.finding_id}</span>
+                {f.file && <ProgramLink id={f.file} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+                <span className="xf-pos-item">{f.line ? `L${f.line}` : "location unavailable"}{f.col ? `:${f.col}` : ""}</span>
+                <span className="lg-reason">{f.message}</span>
+                {f.evidence && <span className="pj-rel-ev">{f.evidence}</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+        {reg.unsupported_structures.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">unsupported constructs</span>
+            {reg.unsupported_structures.map((u, i) => (
+              <div className="lg-ref-row" key={i}>
+                <span className="lg-name">{u.structure}</span>
+                <ProgramLink id={u.file} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">L{u.line}</span>
+                <span className="lg-reason">{u.reason}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {reg.unresolved_dependencies.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">unresolved dependencies</span>
+            {reg.unresolved_dependencies.map((e, i) => (
+              <div className="lg-ref-row" key={i}>
+                <ProgramLink id={e.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">
+                  → {e.to ?? e.target ?? e.resolution} ({e.kind}, L{e.line})
+                </span>
+                <span className="pj-rel-ev">{e.evidence}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {reg.ambiguous_dependencies.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">ambiguous dependencies</span>
+            {reg.ambiguous_dependencies.map((e, i) => (
+              <div className="lg-ref-row" key={`${e.from}:${e.line}:${i}`}>
+                <ProgramLink id={e.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">→ {e.target} ({e.kind}, L{e.line})</span>
+                <span className="pj-rel-ev">{e.evidence}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {reg.notes.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">notes</span>
+            {reg.notes.map((n) => (
+              <div className="lg-ref-row" key={n.finding_id}>
+                <span className="lg-name">{n.code} · {n.finding_id}</span>
+                {n.file && <ProgramLink id={n.file} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+                <span className="xf-pos-item">{n.line ? `L${n.line}` : "location unavailable"}</span>
+                <span className="lg-reason">{n.message}</span>
+                {n.evidence && <span className="pj-rel-ev">{n.evidence}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="ov-note">{reg.note}</p>
+      </div>
+
+      <div className="ov-section">
+        <h3>COVERAGE &amp; LIMITATIONS</h3>
+        <div className="lg-unsup">
+          {cov.dimensions.map((d) => (
+            <div className="lg-ref-row" key={d.dimension}>
+              <span className="lg-name">{d.dimension}</span>
+              <span className="xf-pos-item">
+                {d.covered} of {d.denominator} programs
+              </span>
+              <span className="lg-reason">{d.note}</span>
+            </div>
+          ))}
+        </div>
+        <dl className="ov-kv">
+          <dt>Unsupported constructs</dt><dd>{cov.unsupported_constructs_total}</dd>
+          <dt>Unresolved relationships</dt><dd>{cov.unresolved_relationships_total}</dd>
+          <dt>Analysis assumptions</dt><dd>{cov.assumptions_total}</dd>
+        </dl>
+        <p className="ov-note">{cov.note}</p>
+        <div className="lg-unsup">
+          <span className="df-block-title">analysis assumptions ({assumptions.length})</span>
+          {assumptions.map((a) => (
+            <div className="lg-ref-row" key={a.id}>
+              <span className="lg-name">{a.topic}</span>
+              <span className="lg-reason">{a.detail}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function DeclTree({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const rows = [...m.declarations].sort((a, b) => {
     const da = a.source_file.localeCompare(b.source_file);
@@ -1234,6 +1570,14 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
       {env && !busy && (
         <div className="pj-body">
           <div className="pj-files" role="list" aria-label="Project files">
+            <button
+              className={`sample-item ${selected === null ? "active" : ""}`}
+              onClick={() => setSelected(null)}
+              title="Whole-project intelligence overview"
+            >
+              <span className="name">Project overview</span>
+              <span className="desc">inventory · dependencies · rules</span>
+            </button>
             {env.files.map((f) => {
               const st = env.per_file[f.file_id]?.status ?? "?";
               return (
@@ -1268,6 +1612,10 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
           </div>
 
           <div className="pj-detail">
+            {!selected && env.overview && (
+              <ProjectOverviewView ov={env.overview} assumptions={env.assumptions} onSelect={setSelected}
+                onOpenSource={props.onOpenSource} sourcesRef={props.sourcesRef} />
+            )}
             {sel && (
               <div className="ov-section">
                 <h3>
@@ -1507,6 +1855,8 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
               </div>
             )}
 
+            {selected && (
+              <>
             <div className="ov-section">
               <h3>PROJECT FINDINGS</h3>
               {env.findings.length === 0 && (
@@ -1614,6 +1964,8 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
                 ))}
               </ul>
             </div>
+              </>
+            )}
           </div>
         </div>
       )}

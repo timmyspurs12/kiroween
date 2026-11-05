@@ -287,6 +287,32 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   "rule structures not established". The sample project's EVALFIX
   program demonstrates the unsupported-EVALUATE path end to end.
 
+## 7g. Milestone 9 interface additions (project overview)
+
+- With no program selected (the default after loading, and reachable via
+  the "Project overview" item at the top of the file list), the detail pane
+  shows the whole-project intelligence overview: Application inventory,
+  Dependencies, Data & cross-program flow, Decisions & rule candidates,
+  Investigation register, and Coverage & limitations.
+- Every aggregate is paired with evidence: dependency rows cite source,
+  target, kind, resolution, file + line + statement; CALL flow rows retain
+  producer/consumer operation ids; rule candidates retain rule/decision ids,
+  source line, condition text and branch operation ids. Program links open
+  existing detail panels, and the adjacent "open source" action uses the
+  existing editor callback when source text is available.
+- Violations, notes and every risk finding retain their original id,
+  message, evidence and best-supported source location. Risks are grouped
+  only by code for headings; each original finding remains its own row.
+  Project-wide findings without one exact location say so instead of
+  inventing one. Unsupported constructs retain recorded reasons.
+- Coverage rows state each dimension's covered/denominator explicitly and
+  are never combined into a percentage; no health score is shown. The rule
+  disclaimer ("discovered source structure, not verified business
+  requirements") is part of the section.
+- Selecting any program (or an overview row) switches to the existing
+  detail panels; "Project overview" returns. Zero states are explicit
+  (no cycles, no violations render as counts with no rows).
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

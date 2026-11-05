@@ -436,10 +436,10 @@ def test_cross_file_determinism():
 def test_schema_v3_is_additive_over_v1():
     name, entries = ingest_directory("examples/sample-project")
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 6
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 7
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
-                "summary"):
+                "summary", "overview"):
         assert key in r
     for key in ("files_total", "files_indexed", "files_analyzed",
                 "files_rejected", "files_copybook", "files_skipped",

@@ -637,10 +637,10 @@ def test_single_file_envelope_unchanged_by_m5():
 def test_project_schema_stays_additive():
     name, entries = ingest_dir()
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 6
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 7
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage",
-                "assumptions", "summary", "cross_file"):
+                "assumptions", "summary", "cross_file", "overview"):
         assert key in r
     xf = r["cross_file"]
     for key in ("interfaces", "mappings", "copybook_declarations",

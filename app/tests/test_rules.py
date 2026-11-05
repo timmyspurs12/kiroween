@@ -367,7 +367,7 @@ def test_no_invented_business_interpretation():
 def test_m5_m7_regression_stability():
     r = example_project()
     df = r["cross_file"]["dataflow"]
-    assert r["schema_version"] == 6
+    assert r["schema_version"] == 7
     # M6 anchor: the cross-program link still cites the COMPUTE op
     au = df["programs"]["src/AUDTOTAL.cbl"]
     comp = [o for o in au["operations"] if o["type"] == "COMPUTE"][0]

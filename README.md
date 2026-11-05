@@ -191,6 +191,27 @@ Project envelope grows additively (schema 5 → 6:
 `dataflow.rules` per program + rule totals; rule assumptions join the
 assumptions registry as RULE_001–RULE_004).
 
+### Whole-project intelligence overview (Milestone 9)
+
+Project analysis consolidates the existing M1–M8 records into a
+deterministic project-level overview: an application inventory (discovered
+files, programs, copybooks, rejected files, frozen-grammar accepted vs
+supplemental-scan programs — rejection never removes a file from the inventory), dependency
+intelligence (CALL vs COPY edges, resolution partition that sums to the
+total, cycles), data and cross-program intelligence (mapping statuses kept
+distinct, dynamic CALL targets, copybook-origin declarations), decision and
+rule intelligence (per-program aggregation, programs without candidates,
+the structure-not-requirements disclaimer), an investigation register
+(violations, risks grouped by code with every finding id and location kept,
+unsupported constructs, unresolved dependencies, incomplete mappings), and
+coverage dimensions with explicit separate denominators — never combined
+into a single percentage and never presented as a health score. Every
+aggregate row carries navigation identifiers (file ids, finding ids, source
+lines) and the UI overview links each row into the existing program panels.
+Counting rules are documented in the `overview-counting-rules` project
+assumption. Project envelope grows additively (schema 6 → 7: a derived
+`overview` section — no re-analysis, single-file output unchanged).
+
 ### Command-line use (batch / CI)
 
 ```bash
@@ -230,7 +251,7 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 225 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 240 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
@@ -240,7 +261,7 @@ python3 -m pytest app/tests/ -v
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**225 passed in ~3.0 s**.
+**240 passed in ~3.2 s**.
 
 ## API
 

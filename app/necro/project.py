@@ -34,8 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 6  # v6: dataflow gains rule candidates
-                             # (Milestone 8)
+PROJECT_SCHEMA_VERSION = 7  # v7: project gains the whole-project
+                             # intelligence overview (Milestone 9)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -105,6 +105,17 @@ PROJECT_ASSUMPTIONS = [
         "detail": ("CALL targets are resolved to project files by name "
                    "literal; no program is executed and dynamic targets "
                    "(identifiers) are reported as unresolved."),
+    },
+    {
+        "id": "overview-counting-rules",
+        "topic": "Overview counting rules",
+        "detail": ("Overview aggregates are derived from existing "
+                   "records: one row per physical file, logical "
+                   "program, dependency edge, finding and rule "
+                   "candidate; resolution partitions sum to totals; "
+                   "grouped risk counts keep every finding id. "
+                   "Coverage dimensions use different denominators and "
+                   "are never combined into a single percentage."),
     },
     {
         "id": "impact-not-runtime",
@@ -349,8 +360,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 6:
-    dataflow gains rule candidates derived from decisions + data flow)."""
+    "error": reason}] — build the full project envelope (schema_version 7:
+    project gains the whole-project intelligence overview)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -669,6 +680,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
     from necro import rules as _rules
     from necro.dataflow import DFA_ASSUMPTIONS
     from necro.rules import RULE_ASSUMPTIONS
+    from necro.overview import build_overview
     flow_programs: Dict[str, dict] = {}
     for fid in sorted(models):
         model = models[fid]
@@ -919,6 +931,16 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "copybooks": sum(1 for f in files if f["kind"] == "copybook"),
     }
 
+    json_findings = [_fdiag_json(d) for d in findings]
+    env_assumptions = list(PROJECT_ASSUMPTIONS) + [
+        {"id": a["id"], "topic": a["topic"], "detail": a["detail"]}
+        for a in list(XFD_ASSUMPTIONS) + list(XFS_ASSUMPTIONS)
+        + list(DFA_ASSUMPTIONS)]
+    # whole-project intelligence overview (M9): derived from the final
+    # analysis records only — no re-analysis
+    overview = build_overview(files, skipped, per_file, edges, cycles,
+                              cross_file, json_findings)
+    overview["coverage"]["assumptions_total"] = len(env_assumptions)
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project": {"name": name},
@@ -928,14 +950,11 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "edges": edges,
         "cycles": cycles,
         "per_file": {fid: per_file[fid] for fid in sorted(per_file)},
-        "findings": [_fdiag_json(d) for d in findings],
+        "findings": json_findings,
         "cross_file": cross_file,
+        "overview": overview,
         "coverage": coverage,
-        "assumptions": PROJECT_ASSUMPTIONS + [
-            {"id": a["id"], "topic": a["topic"], "detail": a["detail"]}
-            for a in list(XFD_ASSUMPTIONS) + list(XFS_ASSUMPTIONS)
-            + list(DFA_ASSUMPTIONS)
-        ],
+        "assumptions": env_assumptions,
         "summary": summary,
     }
 

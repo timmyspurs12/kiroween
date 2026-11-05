@@ -528,10 +528,10 @@ def test_dataflow_determinism():
 def test_schema_v4_additive_and_contracts_intact():
     name, entries = ingest_dir()
     r = analyze_project(name, entries)
-    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 6
+    assert r["schema_version"] == PROJECT_SCHEMA_VERSION == 7
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage",
-                "assumptions", "summary", "cross_file"):
+                "assumptions", "summary", "cross_file", "overview"):
         assert key in r
     df = r["cross_file"]["dataflow"]
     for key in ("programs", "cross_program_links", "assumptions",
