@@ -715,8 +715,138 @@ export interface ProjectOverview {
   note: string;
 }
 
+export type MigrationReadinessState =
+  | "ready_for_planning"
+  | "investigation_required"
+  | "not_assessable";
+
+export interface ReadinessEvidenceRef {
+  kind: string;
+  file?: string | null;
+  program?: string | null;
+  caller?: string | null;
+  callee?: string | null;
+  from?: string | null;
+  to?: string | null;
+  target?: string | null;
+  line?: number | null;
+  col?: number | null;
+  code?: string | null;
+  classification?: string | null;
+  finding_id?: string | null;
+  op_id?: string | null;
+  rule_id?: string | null;
+  decision_id?: string | null;
+  status?: string | null;
+  resolution?: string | null;
+  message?: string | null;
+  reason?: string | null;
+  evidence?: string | null;
+  context_line?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ReadinessReason {
+  code: string;
+  title: string;
+  detail: string;
+  evidence_refs: ReadinessEvidenceRef[];
+  dimensions?: string[];
+}
+
+export interface ReadinessQuestion {
+  question: string;
+  why_it_matters: string;
+  verify: string;
+  blocking_for_planning: boolean;
+  evidence_refs: ReadinessEvidenceRef[];
+}
+
+export interface ReadinessDimension {
+  status: string;
+  summary: string;
+  evidence_refs: ReadinessEvidenceRef[];
+  [key: string]: unknown;
+}
+
+export interface ProgramReadiness {
+  program: string;
+  readiness_state: MigrationReadinessState;
+  reasons: ReadinessReason[];
+  supporting_evidence_refs: ReadinessEvidenceRef[];
+  unresolved_questions: ReadinessQuestion[];
+  dimensions: Record<string, ReadinessDimension>;
+  limitations: string[];
+  assumption_ids: string[];
+  blocking_requirement_count: number;
+  work_package_ids: string[];
+}
+
+export interface MigrationWorkPackage {
+  work_package_id: string;
+  category: string;
+  title: string;
+  affected_programs: string[];
+  affected_dependency: Record<string, unknown> | null;
+  reason: string;
+  evidence_refs: ReadinessEvidenceRef[];
+  prerequisites: ReadinessEvidenceRef[];
+  expected_outcome: string;
+  completion_condition: string;
+  blocking_for_planning: boolean;
+  deduplication_basis: string;
+}
+
+export interface MigrationReadiness {
+  classification_rules: string[];
+  limitations: string[];
+  assumptions: { id: string; topic: string; detail: string }[];
+  project: {
+    readiness_state: MigrationReadinessState;
+    reasons: { code: string; detail: string; evidence_refs: ReadinessEvidenceRef[] }[];
+    program_count: number;
+    counts_by_state: Record<MigrationReadinessState, number>;
+    skipped_inputs: ReadinessEvidenceRef[];
+    programs_with_most_investigation_requirements: {
+      program: string; blocking_requirement_count: number;
+      readiness_state: MigrationReadinessState; work_package_ids: string[];
+    }[];
+    shared_dependencies: {
+      dependency: string; dependency_kind: string; dependent_programs: string[];
+      readiness_states: Record<string, MigrationReadinessState>;
+      edge_occurrences: number; evidence_refs: ReadinessEvidenceRef[]; note: string;
+    }[];
+    unresolved_interfaces: {
+      caller: string | null; callee: string | null; target: string | null;
+      line: number | null; status: string; affected_programs: string[];
+      evidence_refs: ReadinessEvidenceRef[];
+    }[];
+    unsupported_constructs: {
+      file: string; line: number | null; structure: string; reason: string | null;
+      evidence_refs: ReadinessEvidenceRef[]; affected_programs: string[];
+    }[];
+    parser_rejections: {
+      program: string; reason: string | null;
+      diagnostics: { finding_id: string | null; code: string | null;
+        classification: string | null; line: number | null; col: number | null;
+        message: string | null; evidence_ref: ReadinessEvidenceRef }[];
+      affected_programs: string[];
+    }[];
+    cross_program_risks: {
+      work_package_id: string; category: string; title: string;
+      affected_programs: string[]; evidence_refs: ReadinessEvidenceRef[];
+    }[];
+    planning_prerequisites: { work_package_id: string; title: string;
+      affected_programs: string[] }[];
+    note: string;
+  };
+  programs: ProgramReadiness[];
+  work_packages: MigrationWorkPackage[];
+  note: string;
+}
+
 export interface ProjectEnvelope {
-  schema_version: 7;
+  schema_version: 8;
   project: { name: string };
   files: ProjectFile[];
   skipped: { path: string; reason: string; code: string }[];
@@ -727,6 +857,7 @@ export interface ProjectEnvelope {
   findings: ProjectFinding[];
   cross_file?: CrossFileSection;
   overview: ProjectOverview;
+  migration_readiness: MigrationReadiness;
   coverage: Record<string, number | Record<string, number>>;
   assumptions: { id: string; topic: string; detail: string }[];
   summary: { ok: boolean; errors: number; warnings: number; infos: number; programs: number; copybooks: number };

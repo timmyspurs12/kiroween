@@ -313,6 +313,48 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
   detail panels; "Project overview" returns. Zero states are explicit
   (no cycles, no violations render as counts with no rows).
 
+## 7h. Milestone 10 migration-planning readiness
+
+- The M10 area is a separate project-workspace destination. The M9 overview
+  remains the default; individual source, dataflow, dependency, decision and
+  rule panels remain available when a program is selected. Program readiness
+  detail is shown above those existing panels.
+- The assessment is a deterministic rules result over existing `per_file`,
+  `logical`, `dataflow`, `edges`, `cross_file.mappings`, findings and
+  assumptions records. It has no numerical readiness/confidence/health
+  score. States mean planning only, not approval to migrate or equivalence.
+- `not_assessable` means the logical model or dataflow records needed for
+  the dimensions are missing. `investigation_required` means evidence exists
+  but includes a rejected source, unsupported/incomplete construct, recorded
+  risk, unresolved relationship, or incomplete CALL USING mapping.
+  `ready_for_planning` requires accepted frozen-subset per-file analysis,
+  both supplemental models and no such recorded blocker. No findings or
+  rule candidates do not prove absence of risk/business logic; non-blocking
+  source/dependency questions and limitations stay visible.
+- Project readiness is `ready_for_planning` only when every indexed program
+  is ready and there are no skipped inputs. Otherwise its state is derived
+  from program states (all not assessable → not assessable; a mixture or
+  investigation requirement → investigation required). Shared dependency
+  and rejected-callee effects propagate only through recorded dependency
+  edges, which are included as evidence references.
+- Work packages are keyed by the exact underlying record: CALL file+line,
+  dependency kind/source/target/line, sorted cycle component, parser-rejected
+  physical program, unsupported source location, logical declaration id,
+  operation id, rule id, or finding id plus source context. A CALL edge,
+  mapping and XFD finding at the same site coalesce into one package with
+  all refs preserved. Distinct findings are not merged by similar messages.
+  Prerequisites are included only when declaration records establish them;
+  otherwise the UI says none are established. Packages have no estimate,
+  owner, deadline or invented cost.
+- Program reports separate source understanding, data integrity,
+  interface/dependency readiness and business-logic understanding. Every
+  state includes reasons, source/evidence refs, unresolved questions,
+  limitations and assumption IDs. Project view exposes counts by state,
+  shared dependencies, parser rejections, unsupported structures,
+  cross-program risks and the evidence-backed work-package queue.
+- Schema advances additively from project v7 to v8 (`migration_readiness`);
+  the single-file envelope is unchanged.
+
 ## 8. Milestone 2 interface additions
 
 The visual identity is unchanged; the milestone adds information views:

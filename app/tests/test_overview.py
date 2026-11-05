@@ -243,7 +243,7 @@ def test_overview_deterministic():
 
 def test_schema_additive_and_single_file_untouched():
     r = example_project()
-    assert r["schema_version"] == 7
+    assert r["schema_version"] == 8
     assert "overview" in r
     # All candidate source records remain present in their original section.
     assert "programs" in r["cross_file"]["dataflow"]
@@ -251,7 +251,7 @@ def test_schema_additive_and_single_file_untouched():
     # counting-rule assumption documented
     ids = [a["id"] for a in r["assumptions"]]
     assert ids.count("overview-counting-rules") == 1
-    assert ov_of(r)["coverage"]["assumptions_total"] == len(ids) == 19
+    assert ov_of(r)["coverage"]["assumptions_total"] == len(ids) == 20
 
 
 def test_m5_m8_records_unchanged_by_overview():

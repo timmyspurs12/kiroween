@@ -212,6 +212,35 @@ Counting rules are documented in the `overview-counting-rules` project
 assumption. Project envelope grows additively (schema 6 → 7: a derived
 `overview` section — no re-analysis, single-file output unchanged).
 
+### Migration planning readiness (Milestone 10)
+
+`migration_readiness` adds deterministic `ready_for_planning`,
+`investigation_required`, and `not_assessable` states per program plus a
+project assessment. It is planning readiness only, not migration approval or
+runtime equivalence. A program is ready only when its frozen-subset per-file
+analysis was accepted, logical and dataflow records are present, and the
+existing records contain no blocker: parser rejection, unsupported or
+incomplete construct, risk finding, unresolved dependency/data relation, or
+incomplete CALL USING mapping. Missing logical or dataflow records make the
+program not assessable. Project readiness requires every indexed program to
+be ready and no skipped inputs; a ready program cannot make the project
+ready by itself. Zero findings or rule candidates are not treated as proof
+of no risk or business logic; non-blocking verification questions and the
+analysis limitations remain visible.
+
+The assessment has separate source-understanding, data-integrity,
+interface/dependency, business-logic, and investigation dimensions. It
+retains original finding classifications and exact file/line/op/rule/mapping
+references. Work packages use no cost or effort estimates. They coalesce
+records only for the same CALL source location, dependency occurrence/cycle,
+parser-rejected program, unsupported construct, declaration, operation,
+rule candidate, or finding id; similar messages are not enough to merge
+issues. Each package states expected outcome, completion condition, any
+established declaration prerequisites, and evidence refs. Project envelope
+schema grows additively from 7 → 8; single-file response remains unchanged.
+Classification and counting rules are recorded in the
+`migration-readiness-classification` assumption.
+
 ### Command-line use (batch / CI)
 
 ```bash
@@ -251,17 +280,17 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 240 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 257 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
 # envelope shape, HTTP API contract, static serving, path-traversal guard,
 # logical model + copybook provenance, cross-file interfaces/mappings,
-# statement-level data flow, and decision-path analysis
+# statement-level data flow, decision paths, and migration readiness
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**240 passed in ~3.2 s**.
+**257 passed in ~4.4 s**.
 
 ## API
 

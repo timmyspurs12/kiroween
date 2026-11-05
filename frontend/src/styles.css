@@ -2147,3 +2147,42 @@ button {
   border-bottom: 1px dotted var(--edge-strong);
 }
 .ov-source-link:hover { color: var(--accent-hi); }
+
+/* Milestone 10 — explainable migration-planning readiness */
+.migration-state {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--r-sm);
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+.migration-state.ready_for_planning {
+  color: var(--state-ok);
+  border-color: var(--state-ok);
+}
+.migration-state.investigation_required {
+  color: var(--state-warn);
+  border-color: var(--state-warn);
+}
+.migration-state.not_assessable {
+  color: var(--text-faint);
+  border-style: dashed;
+}
+.migration-readiness-head > .migration-state { margin-bottom: var(--sp-2); }
+.readiness-evidence { align-items: baseline; }
+.readiness-evidence .lg-reason,
+.readiness-evidence .pj-rel-ev { flex-basis: 100%; }
+.migration-work-package { border-left-color: var(--state-warn); }
+.program-readiness-detail h4 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  color: var(--text-mute);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}

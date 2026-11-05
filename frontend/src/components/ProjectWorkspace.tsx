@@ -12,6 +12,11 @@ import {
   RuleCandidate,
   RuleItem,
   ProjectOverview,
+  MigrationReadiness,
+  ProgramReadiness,
+  MigrationWorkPackage,
+  ReadinessEvidenceRef,
+  MigrationReadinessState,
   analyzeProject,
   getExampleProject,
 } from "../api";
@@ -113,6 +118,8 @@ export function ProjectWorkspace(props: {
 }) {
   const [env, setEnv] = useState<ProjectEnvelope | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [projectPage, setProjectPage] = useState<"overview" | "readiness">("overview");
+  const [pendingWorkPackage, setPendingWorkPackage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dirInputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +134,7 @@ export function ProjectWorkspace(props: {
       }
       setEnv(result);
       setSelected(null);
+      setProjectPage("overview");
     } catch (err) {
       setError(err instanceof Error ? err.message : "project analysis failed");
     } finally {
@@ -1249,6 +1257,293 @@ function ProjectOverviewView({ ov, assumptions, onSelect, onOpenSource, sourcesR
   );
 }
 
+// ---- migration planning readiness (Milestone 10) -----------------------------
+
+function ReadinessStateChip({ state }: { state: MigrationReadinessState }) {
+  return <span className={`migration-state ${state}`}>{state.replace(/_/g, " ")}</span>;
+}
+
+function EvidenceRefRows({ refs, onSelect, onOpenSource, sourcesRef }: {
+  refs: ReadinessEvidenceRef[];
+  onSelect: (id: string) => void;
+  onOpenSource: (path: string, content: string) => void;
+  sourcesRef?: Record<string, string>;
+}) {
+  if (!refs.length) return <span className="ov-note">No exact evidence reference recorded.</span>;
+  return (
+    <div className="lg-unsup">
+      {refs.map((ref, i) => {
+        const file = ref.file || ref.program || ref.caller || ref.from;
+        const fileId = typeof file === "string" ? file : null;
+        const line = typeof ref.line === "number" ? ref.line : null;
+        return (
+          <div className="lg-ref-row readiness-evidence" key={`${ref.kind}:${ref.finding_id ?? ref.op_id ?? ref.rule_id ?? i}`}>
+            <span className="lg-name">{ref.kind}</span>
+            {fileId && <ProgramLink id={fileId} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+            {ref.to && <span className="xf-pos-item">→ {String(ref.to)}</span>}
+            {line != null && <span className="xf-pos-item">L{line}</span>}
+            {ref.code && <span className="diag-code">{String(ref.code)}{ref.classification ? ` · ${String(ref.classification)}` : ""}</span>}
+            {ref.finding_id && <span className="diag-loc">{String(ref.finding_id)}</span>}
+            {ref.op_id && <span className="diag-loc">op {String(ref.op_id)}</span>}
+            {ref.rule_id && <span className="diag-loc">rule {String(ref.rule_id)}</span>}
+            {ref.message && <span className="lg-reason">{String(ref.message)}</span>}
+            {ref.evidence && <span className="pj-rel-ev">{String(ref.evidence)}</span>}
+            {ref.context_line && <span className="pj-rel-ev">{String(ref.context_line)}</span>}
+            {ref.reason && <span className="lg-reason">{String(ref.reason)}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MigrationReadinessProjectView({ assessment, onSelect, onOpenSource, sourcesRef }: {
+  assessment: MigrationReadiness;
+  onSelect: (id: string) => void;
+  onOpenSource: (path: string, content: string) => void;
+  sourcesRef?: Record<string, string>;
+}) {
+  const project = assessment.project;
+  return (
+    <>
+      <div className="ov-section migration-readiness-head">
+        <h3>MIGRATION READINESS</h3>
+        <ReadinessStateChip state={project.readiness_state} />
+        <p className="ov-note">{assessment.note}</p>
+        <p className="ov-note">{project.note}</p>
+        {project.reasons.map((reason, i) => (
+          <div className="lg-ref-row" key={`${reason.code}:${i}`}>
+            <span className="lg-name">{reason.code}</span>
+            <span className="lg-reason">{reason.detail}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="ov-section">
+        <h3>PROGRAM STATES · {project.program_count} programs</h3>
+        <dl className="ov-kv">
+          <dt>Ready for planning</dt><dd>{project.counts_by_state.ready_for_planning}</dd>
+          <dt>Investigation required</dt><dd>{project.counts_by_state.investigation_required}</dd>
+          <dt>Not assessable</dt><dd>{project.counts_by_state.not_assessable}</dd>
+        </dl>
+        <p className="ov-note">Counts are state totals, not a project score. A ready program does not make the whole project ready.</p>
+        {project.programs_with_most_investigation_requirements.length > 0 && (
+          <div className="lg-unsup">
+            <span className="df-block-title">program investigation queue (distinct blocker count; not a risk ranking)</span>
+            {project.programs_with_most_investigation_requirements.map((p) => (
+              <div className="lg-ref-row" key={p.program}>
+                <ProgramLink id={p.program} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <ReadinessStateChip state={p.readiness_state} />
+                <span className="xf-pos-item">{p.blocking_requirement_count} distinct requirements</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {project.shared_dependencies.length > 0 && (
+        <div className="ov-section">
+          <h3>SHARED DEPENDENCIES</h3>
+          {project.shared_dependencies.map((d) => (
+            <div className="df-op" key={d.dependency}>
+              <div className="lg-ref-row">
+                <ProgramLink id={d.dependency} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="xf-pos-item">{d.dependency_kind} · {d.edge_occurrences} edge occurrence(s)</span>
+              </div>
+              <div className="lg-ref-row">
+                <span className="lg-name">dependent programs</span>
+                {d.dependent_programs.map((p) => (
+                  <ProgramLink key={p} id={p} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                ))}
+              </div>
+              <p className="ov-note">{d.note}</p>
+              <EvidenceRefRows refs={d.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {project.unresolved_interfaces.length > 0 && (
+        <div className="ov-section">
+          <h3>UNRESOLVED / INCOMPLETE INTERFACES</h3>
+          {project.unresolved_interfaces.map((x, i) => (
+            <div className="lg-ref-row" key={`${x.caller}:${x.line}:${i}`}>
+              {x.caller && <ProgramLink id={x.caller} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+              <span className="xf-pos-item">→ {x.callee ?? x.target ?? "unresolved"} · {x.status} · L{x.line}</span>
+              {x.callee && <ProgramLink id={x.callee} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+              <EvidenceRefRows refs={x.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {project.unsupported_constructs.length > 0 && (
+        <div className="ov-section">
+          <h3>UNSUPPORTED CONSTRUCTS &amp; DECLARATIONS</h3>
+          {project.unsupported_constructs.map((u, i) => (
+            <div className="lg-ref-row" key={`${u.file}:${u.line}:${i}`}>
+              <span className="lg-name">{u.structure}</span>
+              <ProgramLink id={u.file} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+              <span className="xf-pos-item">L{u.line}</span>
+              <span className="lg-reason">{u.reason}</span>
+              <EvidenceRefRows refs={u.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {project.parser_rejections.length > 0 && (
+        <div className="ov-section">
+          <h3>PARSER REJECTIONS</h3>
+          {project.parser_rejections.map((p) => (
+            <div className="lg-unsup" key={p.program}>
+              <div className="lg-ref-row">
+                <ProgramLink id={p.program} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <span className="lg-reason">{p.reason}</span>
+              </div>
+              {p.diagnostics.map((d, i) => (
+                <EvidenceRefRows key={`${d.finding_id}:${i}`} refs={[d.evidence_ref]} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {project.cross_program_risks.length > 0 && (
+        <div className="ov-section">
+          <h3>CROSS-PROGRAM INVESTIGATION</h3>
+          {project.cross_program_risks.map((r) => (
+            <div className="lg-unsup" key={r.work_package_id}>
+              <span className="lg-name">{r.title}</span>
+              <div className="lg-ref-row">
+                <span className="lg-name">affected</span>
+                {r.affected_programs.map((p) => (
+                  <ProgramLink key={p} id={p} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                ))}
+              </div>
+              <EvidenceRefRows refs={r.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="ov-section">
+        <h3>MIGRATION WORK PACKAGES · {assessment.work_packages.length}</h3>
+        {assessment.work_packages.length === 0 && (
+          <p className="ov-note">No blocking work packages are recorded. Review the non-blocking questions and scope limitations before planning.</p>
+        )}
+        {assessment.work_packages.map((w) => (
+          <div className="df-op migration-work-package" id={w.work_package_id} key={w.work_package_id}>
+            <div className="lg-ref-row">
+              <strong className="lg-name">{w.title}</strong>
+              <span className="diag-loc">{w.work_package_id}</span>
+              <span className="xf-status partial">{w.category.replace(/_/g, " ")}</span>
+            </div>
+            <div className="lg-ref-row">
+              <span className="lg-name">affected</span>
+              {w.affected_programs.length ? w.affected_programs.map((p) => (
+                <ProgramLink key={p} id={p} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+              )) : <span className="ov-note">No indexed program identified.</span>}
+              {w.affected_dependency && <span className="xf-pos-item">{JSON.stringify(w.affected_dependency)}</span>}
+            </div>
+            <p className="lg-reason">{w.reason}</p>
+            <div className="lg-ref-row"><span className="lg-name">expected outcome</span><span>{w.expected_outcome}</span></div>
+            <div className="lg-ref-row"><span className="lg-name">completion</span><span>{w.completion_condition}</span></div>
+            <div className="lg-unsup">
+              <span className="df-block-title">prerequisites {w.prerequisites.length ? "recorded" : "(none established from current records)"}</span>
+              <EvidenceRefRows refs={w.prerequisites} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+            <div className="lg-unsup">
+              <span className="df-block-title">evidence</span>
+              <EvidenceRefRows refs={w.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+            </div>
+            <p className="ov-note">Deduplicated by: {w.deduplication_basis}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="ov-section">
+        <h3>READINESS RULES, LIMITATIONS &amp; ASSUMPTIONS</h3>
+        <ul className="pj-assumptions">
+          {assessment.classification_rules.map((rule) => <li key={rule}>{rule}</li>)}
+        </ul>
+        <ul className="pj-assumptions">
+          {assessment.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+        </ul>
+        {assessment.assumptions.map((a) => (
+          <div className="lg-ref-row" key={a.id}>
+            <span className="lg-name">{a.id} · {a.topic}</span>
+            <span className="lg-reason">{a.detail}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ProgramReadinessDetail({ report, workPackages, onSelect, onOpenWorkPackage, onOpenSource, sourcesRef }: {
+  report: ProgramReadiness;
+  workPackages: MigrationWorkPackage[];
+  onSelect: (id: string) => void;
+  onOpenWorkPackage: (id: string) => void;
+  onOpenSource: (path: string, content: string) => void;
+  sourcesRef?: Record<string, string>;
+}) {
+  const related = workPackages.filter((w) => report.work_package_ids.includes(w.work_package_id));
+  return (
+    <div className="ov-section program-readiness-detail">
+      <h3>MIGRATION READINESS · {report.program}</h3>
+      <ReadinessStateChip state={report.readiness_state} />
+      {report.reasons.map((r, i) => (
+        <div className="lg-ref-row" key={`${r.code}:${i}`}>
+          <span className="lg-name">{r.title}</span>
+          <span className="lg-reason">{r.detail}</span>
+          <EvidenceRefRows refs={r.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+        </div>
+      ))}
+      <h4>Assessment dimensions</h4>
+      {Object.entries(report.dimensions).map(([key, dimension]) => (
+        <div className="df-op" key={key}>
+          <div className="lg-ref-row">
+            <strong className="lg-name">{key.replace(/_/g, " ")}</strong>
+            <span className="xf-status partial">{dimension.status.replace(/_/g, " ")}</span>
+          </div>
+          <p className="ov-note">{dimension.summary}</p>
+          <EvidenceRefRows refs={dimension.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+        </div>
+      ))}
+      <h4>Unresolved questions</h4>
+      {report.unresolved_questions.length === 0 ? (
+        <p className="ov-note">No additional questions were recorded within this assessment scope.</p>
+      ) : report.unresolved_questions.map((q, i) => (
+        <div className="lg-unsup" key={`${q.question}:${i}`}>
+          <div className="lg-ref-row">
+            <strong className="lg-name">{q.question}</strong>
+            <span className="xf-pos-item">{q.blocking_for_planning ? "blocking" : "non-blocking scope check"}</span>
+          </div>
+          <p className="lg-reason">{q.why_it_matters}</p>
+          <p className="ov-note">Verify: {q.verify}</p>
+          <EvidenceRefRows refs={q.evidence_refs} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+        </div>
+      ))}
+      {related.length > 0 && (
+        <>
+          <h4>Related work packages</h4>
+          {related.map((w) => (
+            <div className="lg-ref-row" key={w.work_package_id}>
+              <button className="ref-decl" onClick={() => onOpenWorkPackage(w.work_package_id)}>
+                {w.title} · {w.work_package_id}
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+      <p className="ov-note">Limitations: {report.limitations.join(" ")}</p>
+      <p className="ov-note">Assumption references: {report.assumption_ids.join(", ")}</p>
+    </div>
+  );
+}
+
 function DeclTree({ m, onSelect, onSelectDecl }: { m: LogicalModel; onSelect: (id: string) => void; onSelectDecl: (declId: string) => void }) {
   const rows = [...m.declarations].sort((a, b) => {
     const da = a.source_file.localeCompare(b.source_file);
@@ -1467,6 +1762,14 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
   useEffect(() => {
     setFlowDecl(null);
   }, [selected]);
+  useEffect(() => {
+    if (projectPage !== "readiness" || selected !== null || !pendingWorkPackage) return;
+    const node = document.getElementById(pendingWorkPackage);
+    if (node) {
+      node.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      setPendingWorkPackage(null);
+    }
+  }, [projectPage, selected, pendingWorkPackage, env]);
   const [selDecision, setSelDecision] = useState<string | null>(null);
   // decision ids are program-scoped too: reset on program switch
   useEffect(() => {
@@ -1571,12 +1874,20 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
         <div className="pj-body">
           <div className="pj-files" role="list" aria-label="Project files">
             <button
-              className={`sample-item ${selected === null ? "active" : ""}`}
-              onClick={() => setSelected(null)}
+              className={`sample-item ${selected === null && projectPage === "overview" ? "active" : ""}`}
+              onClick={() => { setSelected(null); setProjectPage("overview"); }}
               title="Whole-project intelligence overview"
             >
               <span className="name">Project overview</span>
               <span className="desc">inventory · dependencies · rules</span>
+            </button>
+            <button
+              className={`sample-item ${selected === null && projectPage === "readiness" ? "active" : ""}`}
+              onClick={() => { setSelected(null); setProjectPage("readiness"); }}
+              title="Evidence-backed migration planning readiness"
+            >
+              <span className="name">Migration readiness</span>
+              <span className="desc">states · blockers · work packages</span>
             </button>
             {env.files.map((f) => {
               const st = env.per_file[f.file_id]?.status ?? "?";
@@ -1612,10 +1923,30 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
           </div>
 
           <div className="pj-detail">
-            {!selected && env.overview && (
+            {!selected && projectPage === "overview" && env.overview && (
               <ProjectOverviewView ov={env.overview} assumptions={env.assumptions} onSelect={setSelected}
                 onOpenSource={props.onOpenSource} sourcesRef={props.sourcesRef} />
             )}
+            {!selected && projectPage === "readiness" && env.migration_readiness && (
+              <MigrationReadinessProjectView assessment={env.migration_readiness}
+                onSelect={setSelected} onOpenSource={props.onOpenSource}
+                sourcesRef={props.sourcesRef} />
+            )}
+            {selected && env.migration_readiness && (() => {
+              const report = env.migration_readiness.programs.find((p) => p.program === selected);
+              return report ? (
+                <ProgramReadinessDetail report={report}
+                  workPackages={env.migration_readiness.work_packages}
+                  onSelect={setSelected}
+                  onOpenWorkPackage={(id) => {
+                    setSelected(null);
+                    setProjectPage("readiness");
+                    setPendingWorkPackage(id);
+                  }}
+                  onOpenSource={props.onOpenSource}
+                  sourcesRef={props.sourcesRef} />
+              ) : null;
+            })()}
             {sel && (
               <div className="ov-section">
                 <h3>

@@ -235,10 +235,10 @@ def test_per_file_rejected_carry_reason_and_no_downgrade():
 
 def test_project_envelope_shape_and_coverage():
     r = example_project()
-    assert r["schema_version"] == 7  # v7 adds the project overview
+    assert r["schema_version"] == 8  # v8 adds migration readiness
     for key in ("project", "files", "skipped", "references", "edges",
                 "cycles", "per_file", "findings", "coverage", "assumptions",
-                "summary", "overview"):
+                "summary", "overview", "migration_readiness"):
         assert key in r
     cov = r["coverage"]
     assert cov["files_total"] == 18  # M7 DECISIONS + M8.1.1 EVALFIX
@@ -372,7 +372,7 @@ def test_api_project_and_example_endpoints():
             ex = json.load(res)
         assert ex["name"] == "sample-project" and len(ex["files"]) == 18
         r = _post_project(base, {"name": ex["name"], "files": ex["files"]})
-        assert r["schema_version"] == 7  # v7 adds the project overview
+        assert r["schema_version"] == 8  # v8 adds migration readiness
         assert len(r["edges"]) == 18
         assert len(r["impact"]) == 18
         imp = r["impact"]["copybooks/Q.cpy"]
@@ -394,7 +394,7 @@ def test_cli_project_exit_codes_and_json():
                        capture_output=True, text=True, timeout=60)
     assert r.returncode == 1  # missing copybook = violation-class finding
     env = json.loads(r.stdout)
-    assert env["schema_version"] == 7
+    assert env["schema_version"] == 8
     assert env["coverage"]["dependencies_resolved"] == 14
 
     # human mode: still exit 1, findings printed

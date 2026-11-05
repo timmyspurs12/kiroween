@@ -34,8 +34,8 @@ from necro.diagnostics import (CLASS_NOTE, CLASS_RISK, CLASS_UNSUPPORTED,
                                SEVERITY_ERROR, SEVERITY_INFO,
                                SEVERITY_WARNING, _SEVERITY_CLASSIFICATION)
 
-PROJECT_SCHEMA_VERSION = 7  # v7: project gains the whole-project
-                             # intelligence overview (Milestone 9)
+PROJECT_SCHEMA_VERSION = 8  # v8: project gains evidence-backed migration
+                             # planning readiness (Milestone 10)
 
 PROGRAM_EXTS = {".cbl", ".cob"}
 COPYBOOK_EXTS = {".cpy"}
@@ -116,6 +116,20 @@ PROJECT_ASSUMPTIONS = [
                    "grouped risk counts keep every finding id. "
                    "Coverage dimensions use different denominators and "
                    "are never combined into a single percentage."),
+    },
+    {
+        "id": "migration-readiness-classification",
+        "topic": "Migration planning readiness rules",
+        "detail": ("Readiness is a deterministic planning-only state, "
+                   "not migration approval or runtime-equivalence proof. "
+                   "A program requires accepted per-file analysis plus "
+                   "logical and dataflow records for ready_for_planning; "
+                   "rejected, unsupported, risky, unresolved, or incomplete "
+                   "evidence requires investigation; missing logical or "
+                   "dataflow records are not_assessable. No findings or rule "
+                   "candidates do not prove absence of risk or business logic; "
+                   "project readiness requires every indexed program ready "
+                   "and no skipped inputs. No score is calculated."),
     },
     {
         "id": "impact-not-runtime",
@@ -360,8 +374,8 @@ def _tarjan_scc(nodes: List[str], adj: Dict[str, List[str]]) -> List[List[str]]:
 
 def analyze_project(name: str, entries: List[dict]) -> dict:
     """entries: [{"path": relpath, "content": str} | {"path": relpath,
-    "error": reason}] — build the full project envelope (schema_version 7:
-    project gains the whole-project intelligence overview)."""
+    "error": reason}] — build the full project envelope (schema_version 8:
+    project gains migration-planning readiness derived from existing records)."""
     findings: List[Diagnostic] = []
     files: List[dict] = []
     contents: Dict[str, str] = {}
@@ -681,6 +695,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
     from necro.dataflow import DFA_ASSUMPTIONS
     from necro.rules import RULE_ASSUMPTIONS
     from necro.overview import build_overview
+    from necro.readiness import build_readiness
     flow_programs: Dict[str, dict] = {}
     for fid in sorted(models):
         model = models[fid]
@@ -941,6 +956,9 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
     overview = build_overview(files, skipped, per_file, edges, cycles,
                               cross_file, json_findings)
     overview["coverage"]["assumptions_total"] = len(env_assumptions)
+    migration_readiness = build_readiness(
+        files, skipped, per_file, edges, cycles, cross_file,
+        json_findings, env_assumptions)
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project": {"name": name},
@@ -953,6 +971,7 @@ def analyze_project(name: str, entries: List[dict]) -> dict:
         "findings": json_findings,
         "cross_file": cross_file,
         "overview": overview,
+        "migration_readiness": migration_readiness,
         "coverage": coverage,
         "assumptions": env_assumptions,
         "summary": summary,
