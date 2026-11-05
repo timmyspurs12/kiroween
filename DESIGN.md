@@ -272,6 +272,20 @@ after review), accent-hi 9.1:1, on-accent 6.9:1 — all ≥ 4.5:1.
 - Selection is program-scoped and resets on program switch. The visual
   language is the decision-path/operation one; no dashboard, scores or
   invented rule names are shown.
+- Status treatments reuse the token system and never rely on colour
+  alone: established-structure cards use the accent border and the
+  established status token (label "established structure"; the API enum
+  `established_structure` stays in the tooltip), partial cards use the
+  warning status token and border. Downstream-use rows name the written
+  item each use consumes ("via <item>", by declaration id from the
+  candidate's own written items) or say "item not established".
+- Every program with a rules section shows RULE CANDIDATES: with zero
+  candidates and zero unsupported structures the section shows an
+  explanatory empty state (no supported rule candidates established by
+  the current analysis — not a claim that the program contains no
+  business rules); with unsupported structures they are listed under
+  "rule structures not established". The sample project's EVALFIX
+  program demonstrates the unsupported-EVALUATE path end to end.
 
 ## 8. Milestone 2 interface additions
 

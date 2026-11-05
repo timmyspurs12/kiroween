@@ -399,12 +399,12 @@ def test_example_project_cross_file_flagship_end_to_end():
     assert cov["mappings_established"] == 1
     assert cov["mappings_incomplete"] == 4
     assert cov["mappings_unresolved"] == 2
-    assert cov["interfaces_documented"] == 11  # M7 adds DECISIONS
+    assert cov["interfaces_documented"] == 12  # M8.1.1 adds EVALFIX
     assert cov["copybooks_indexed"] == 6
     # M5: logical model coverage
-    assert cov["logical_programs"] == 11  # M7 adds DECISIONS
+    assert cov["logical_programs"] == 12  # M8.1.1 adds EVALFIX
     assert cov["copybook_semantic_findings"] == 3
-    assert cov["references_resolved"] == 13
+    assert cov["references_resolved"] == 16  # +EVALFIX MOVE refs
 
 
 def test_impact_data_flow_distinct_from_dependencies():

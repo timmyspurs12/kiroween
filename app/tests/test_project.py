@@ -46,7 +46,7 @@ def finding(r, code):
 def test_example_project_exists_and_ingests():
     assert EXAMPLE.is_dir()
     r = example_project()
-    assert r["summary"]["programs"] == 11  # M7 adds DECISIONS
+    assert r["summary"]["programs"] == 12  # M8.1.1 adds EVALFIX
     assert r["summary"]["copybooks"] == 6
 
 
@@ -241,8 +241,8 @@ def test_project_envelope_shape_and_coverage():
                 "summary"):
         assert key in r
     cov = r["coverage"]
-    assert cov["files_total"] == 17  # M7 adds src/DECISIONS.cbl
-    assert cov["files_analyzed"] == 1 and cov["files_rejected"] == 10
+    assert cov["files_total"] == 18  # M7 DECISIONS + M8.1.1 EVALFIX
+    assert cov["files_analyzed"] == 1 and cov["files_rejected"] == 11
     assert cov["files_copybook"] == 6
     assert cov["dependencies_total"] == 18
     assert cov["dependencies_resolved"] == 14
@@ -370,11 +370,11 @@ def test_api_project_and_example_endpoints():
         with urllib.request.urlopen(base + "/api/project/example",
                                     timeout=10) as res:
             ex = json.load(res)
-        assert ex["name"] == "sample-project" and len(ex["files"]) == 17
+        assert ex["name"] == "sample-project" and len(ex["files"]) == 18
         r = _post_project(base, {"name": ex["name"], "files": ex["files"]})
         assert r["schema_version"] == 6  # v6 adds dataflow.rules
         assert len(r["edges"]) == 18
-        assert len(r["impact"]) == 17
+        assert len(r["impact"]) == 18
         imp = r["impact"]["copybooks/Q.cpy"]
         assert imp["transitive_dependants"] == [
             "copybooks/P.cpy", "src/CYCTEST.cbl"]

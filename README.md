@@ -179,7 +179,13 @@ Explanations are composed from recorded facts only ("IF WS-TOTAL > 1000
 at L13 controls a THEN branch containing MOVE at L14 writes
 WS-COUNT. The condition reads WS-TOTAL. The branch writes WS-COUNT.")
 — no business meaning is inferred, and a candidate is never a statement
-of business intent. The UI RULE CANDIDATES section presents candidates
+of business intent. The sample project includes `src/EVALFIX.cbl`, a
+deliberate EVALUATE demonstration: the frozen grammar rejects it, the
+decision model records the structure unsupported, and the RULE
+CANDIDATES section shows it under "rule structures not established" —
+never as a candidate. Programs with no eligible decisions show an
+explicit empty state (no supported rule candidates established — which
+does not mean the program contains no business rules). The UI RULE CANDIDATES section presents candidates
 with their evidence chain; dynamic CALL targets are never attached.
 Project envelope grows additively (schema 5 → 6:
 `dataflow.rules` per program + rule totals; rule assumptions join the
@@ -224,7 +230,7 @@ No `pip install` needed for the server. The optional test suite needs `pytest`
 
 ```bash
 python3 -m pytest app/tests/ -v
-# 222 tests: fixture-corpus behavior, per-layer rejections, preflight
+# 225 tests: fixture-corpus behavior, per-layer rejections, preflight
 # positions, PIC expansion, symbol semantics, sign rules, data dictionary
 # (validated against the corpus byte annotations), references, MOVE and
 # arithmetic capacity findings, zero-divisor detection, determinism,
@@ -234,7 +240,7 @@ python3 -m pytest app/tests/ -v
 ```
 
 Observed result (this workspace, Python 3.11.2 / pytest 9.2.0):
-**222 passed in ~3.0 s**.
+**225 passed in ~3.0 s**.
 
 ## API
 

@@ -700,8 +700,14 @@ function RuleCandidateCard({ c, flow, selRule, onSelect }: {
   const open = selRule === c.rule_id;
   const opById = (id: string) =>
     flow.operations.find((o) => o.op_id === id);
+  // via_item is a declaration id: name it from this candidate's own
+  // written items (never invented — an unknown id stays explicit)
+  const writtenNames = new Map<string, string>();
+  for (const i of c.items_written) {
+    if (i.decl?.decl_id && i.name) writtenNames.set(i.decl.decl_id, i.name);
+  }
   return (
-    <div className={`dec-card rule-card ${open ? "open" : ""}`}>
+    <div className={`dec-card rule-card ${c.status} ${open ? "open" : ""}`}>
       <button
         className="dec-head"
         onClick={() => onSelect(open ? null : c.rule_id)}
@@ -715,8 +721,11 @@ function RuleCandidateCard({ c, flow, selRule, onSelect }: {
         ) : (
           <span className="dec-noelse">no ELSE in source</span>
         )}
-        <span className={`xf-status ${c.status === "partial" ? "partial" : "equal"}`}>
-          {c.status}
+        <span
+          className={`xf-status ${c.status === "partial" ? "partial" : "established"}`}
+          title={`status: ${c.status}`}
+        >
+          {c.status === "partial" ? "partial" : "established structure"}
         </span>
       </button>
       {open && (
@@ -789,6 +798,12 @@ function RuleCandidateCard({ c, flow, selRule, onSelect }: {
               {c.downstream_uses.map((u, k) => (
                 <span className="lg-ref-row" key={k}>
                   <span className="lg-name">{u.label ?? u.op_id}</span>
+                  <span className="xf-pos-item">
+                    via{" "}
+                    {writtenNames.get(u.via_item) ?? (
+                      <span className="lg-reason">item not established</span>
+                    )}
+                  </span>
                   <span className="xf-pos-item">L{u.line}</span>
                   <span className="pj-rel-ev">{u.evidence}</span>
                 </span>
@@ -856,9 +871,21 @@ function RuleCandidatesView({ flow, selRule, onSelect }: {
                              selRule={selRule} onSelect={onSelect} />
         ))}
       </div>
-      {rules.candidates.length === 0 && (
+      {rules.candidates.length === 0 &&
+        rules.unsupported.length === 0 && (
         <p className="ov-note">
-          No rule candidates established for this program.
+          No supported rule candidates were established for this program
+          by the current analysis. This does not mean the program contains
+          no business rules — it means no condition with established
+          branch operations was found; see DECISION PATHS and DATA FLOW
+          for what was established.
+        </p>
+      )}
+      {rules.candidates.length === 0 &&
+        rules.unsupported.length > 0 && (
+        <p className="ov-note">
+          No supported rule candidates were established for this program:
+          its decision structures are recorded as not established below.
         </p>
       )}
       {rules.unsupported.length > 0 && (
@@ -1404,8 +1431,7 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
               </div>
             )}
 
-            {selFlow?.rules && (selFlow.rules.candidates.length > 0 ||
-              selFlow.rules.unsupported.length > 0) && (
+            {selFlow?.rules && (
               <div className="ov-section">
                 <h3>RULE CANDIDATES</h3>
                 <RuleCandidatesView

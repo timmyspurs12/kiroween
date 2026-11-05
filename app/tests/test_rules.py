@@ -388,3 +388,50 @@ def test_m5_m7_regression_stability():
     ids = [a["id"] for a in df["assumptions"]]
     assert ids.count("RULE_001") == 1
     assert "dataflow-not-execution" in ids  # M6 assumptions preserved
+
+
+def test_unsupported_structure_visible_in_project_response():
+    # the sample project contains a real EVALUATE program (EVALFIX):
+    # the structure must be visible as unsupported, never interpreted
+    r = example_project()
+    assert r["per_file"]["src/EVALFIX.cbl"]["status"] == "rejected"
+    rules = rules_of(r, "src/EVALFIX.cbl")
+    assert rules["candidates"] == []
+    assert rules["coverage"] == {
+        "candidates_total": 0, "candidates_established_structure": 0,
+        "candidates_partial": 0, "unsupported_total": 1}
+    ev = [u for u in rules["unsupported"]
+          if u["structure"] == "EVALUATE"]
+    assert len(ev) == 1
+    row = ev[0]
+    assert row["status"] == "unsupported"
+    assert row["line"] == 13
+    assert "EVALUATE" in row["reason"] and row["evidence"]
+    assert row["rule_id"] and len(row["rule_id"]) == 12
+    # WHEN bodies were never promoted into operations or candidates
+    ops = flow_of(r, "src/EVALFIX.cbl")["operations"]
+    assert [o["line"] for o in ops] == [12]
+    assert not any("WHEN" in json.dumps(c) for c in rules["candidates"])
+    # the project-level counter reflects the unsupported structure
+    assert r["cross_file"]["dataflow"]["coverage"]["rules_unsupported"] == 1
+
+
+def test_zero_candidate_program_state_fields():
+    # a program with neither candidates nor unsupported structures still
+    # carries the rules section with explicit zero coverage (the UI
+    # renders the explanatory empty state from these fields)
+    r = example_project()
+    rules = rules_of(r, "src/GLUPDATE.cbl")
+    assert rules["candidates"] == [] and rules["unsupported"] == []
+    assert rules["coverage"] == {
+        "candidates_total": 0, "candidates_established_structure": 0,
+        "candidates_partial": 0, "unsupported_total": 0}
+    assert rules["program"] == "src/GLUPDATE.cbl"
+
+
+def test_status_labels_and_machine_enum_unchanged():
+    # the human label is presentation-only: the API enum is untouched
+    r = example_project()
+    c = candidate_at(r, "src/AUDTOTAL.cbl", 13)
+    assert c["status"] == "established_structure"
+    assert candidate_at(r, "src/DECISIONS.cbl", 13)["status"] == "partial"

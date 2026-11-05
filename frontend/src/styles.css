@@ -2129,3 +2129,9 @@ button {
   color: var(--text);
   line-height: var(--lh-body);
 }
+
+/* ---- rule candidate status treatments (M8.1.1) ---- */
+/* status text keeps the label channel: colour never carries it alone */
+.xf-status.partial { color: var(--state-warn); }
+.rule-card.established_structure { border-left-color: var(--accent); }
+.rule-card.partial { border-left-color: var(--state-warn); }
