@@ -17,8 +17,10 @@ import {
   MigrationWorkPackage,
   ReadinessEvidenceRef,
   MigrationReadinessState,
+  ProjectInputEntry,
   analyzeProject,
   getExampleProject,
+  getReadinessExamples,
 } from "../api";
 
 const RES_LABEL: Record<string, string> = {
@@ -113,7 +115,7 @@ function DepGraph({
 }
 
 export function ProjectWorkspace(props: {
-  onOpenSource: (filename: string, content: string) => void;
+  onOpenSource: (filename: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
 }) {
   const [env, setEnv] = useState<ProjectEnvelope | null>(null);
@@ -122,15 +124,19 @@ export function ProjectWorkspace(props: {
   const [pendingWorkPackage, setPendingWorkPackage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoNote, setDemoNote] = useState<string | null>(null);
   const dirInputRef = useRef<HTMLInputElement>(null);
 
-  const runProject = async (name: string, files: { path: string; content: string }[]) => {
+  const runProject = async (name: string, files: ProjectInputEntry[], notice: string | null = null) => {
     setBusy(true);
     setError(null);
+    setDemoNote(notice);
     try {
       const result = await analyzeProject(name, files);
       if (props.sourcesRef) {
-        for (const f of files) props.sourcesRef[f.path] = f.content;
+        for (const f of files) {
+          if (typeof f.content === "string") props.sourcesRef[f.path] = f.content;
+        }
       }
       setEnv(result);
       setSelected(null);
@@ -145,11 +151,26 @@ export function ProjectWorkspace(props: {
   const loadExample = async () => {
     setBusy(true);
     setError(null);
+    setDemoNote(null);
     try {
       const ex = await getExampleProject();
-      await runProject(ex.name, ex.files);
+      await runProject(ex.name, [...ex.files, ...ex.errors]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "example project unavailable");
+      setBusy(false);
+    }
+  };
+
+  const loadReadinessCase = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const cases = await getReadinessExamples();
+      const item = cases.find((candidate) => candidate.id === id);
+      if (!item) throw new Error(`illustrative case not found: ${id}`);
+      await runProject(item.name, item.files, item.description);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "illustrative case unavailable");
       setBusy(false);
     }
   };
@@ -159,25 +180,31 @@ export function ProjectWorkspace(props: {
     if (list.length === 0) return;
     setBusy(true);
     let done = 0;
-    const out: { path: string; content: string }[] = [];
+    const out: ProjectInputEntry[] = new Array(list.length);
     const rootName =
       (list[0]?.webkitRelativePath ?? "").split("/")[0] || "project";
-    list.forEach((f) => {
+    const relPath = (f: File) => {
+      const rel = f.webkitRelativePath || f.name;
+      // strip the leading folder name for stable relative identities
+      return rel.includes("/") ? rel.split("/").slice(1).join("/") : rel;
+    };
+    list.forEach((f, index) => {
+      const path = relPath(f);
       const reader = new FileReader();
-      reader.onload = () => {
-        const rel = f.webkitRelativePath || f.name;
-        // strip the leading folder name for stable relative identities
-        const path = rel.includes("/") ? rel.split("/").slice(1).join("/") : rel;
-        out.push({ path, content: String(reader.result ?? "") });
-        done += 1;
-        if (done === list.length) {
-          void runProject(rootName, out);
-        }
-      };
-      reader.onerror = () => {
+      let completed = false;
+      const finish = (entry: ProjectInputEntry) => {
+        if (completed) return;
+        completed = true;
+        out[index] = entry;
         done += 1;
         if (done === list.length) void runProject(rootName, out);
       };
+      reader.onload = () =>
+        finish({ path, content: String(reader.result ?? "") });
+      reader.onerror = () =>
+        finish({ path, error: reader.error?.message || "browser could not read file" });
+      reader.onabort = () =>
+        finish({ path, error: "browser read was aborted" });
       reader.readAsText(f);
     });
   };
@@ -924,11 +951,13 @@ function RuleCandidatesView({ flow, selRule, onSelect }: {
 
 // ---- project intelligence overview (Milestone 9) ----------------------------
 
-function ProgramLink({ id, onSelect, onOpenSource, sourcesRef }: {
+function ProgramLink({ id, onSelect, onOpenSource, sourcesRef, line, col }: {
   id: string;
   onSelect: (id: string) => void;
-  onOpenSource: (path: string, content: string) => void;
+  onOpenSource: (path: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
+  line?: number | null;
+  col?: number | null;
 }) {
   return (
     <span className="ov-file-link">
@@ -936,9 +965,9 @@ function ProgramLink({ id, onSelect, onOpenSource, sourcesRef }: {
         {id}
       </button>
       {sourcesRef?.[id] != null && (
-        <button className="ov-source-link" onClick={() => onOpenSource(id, sourcesRef[id] ?? "")}
-          title={`Open source for ${id}`}>
-          open source
+        <button className="ov-source-link" onClick={() => onOpenSource(id, sourcesRef[id] ?? "", line, col)}
+          title={`Open source for ${id}${line != null ? ` at line ${line}${col != null ? `, column ${col}` : ""}` : ""}`}>
+          {line != null ? `open L${line}` : "open source"}
         </button>
       )}
     </span>
@@ -949,7 +978,7 @@ function ProjectOverviewView({ ov, assumptions, onSelect, onOpenSource, sourcesR
   ov: ProjectOverview;
   assumptions: { id: string; topic: string; detail: string }[];
   onSelect: (id: string) => void;
-  onOpenSource: (path: string, content: string) => void;
+  onOpenSource: (path: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
 }) {
   const inv = ov.inventory;
@@ -1266,7 +1295,7 @@ function ReadinessStateChip({ state }: { state: MigrationReadinessState }) {
 function EvidenceRefRows({ refs, onSelect, onOpenSource, sourcesRef }: {
   refs: ReadinessEvidenceRef[];
   onSelect: (id: string) => void;
-  onOpenSource: (path: string, content: string) => void;
+  onOpenSource: (path: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
 }) {
   if (!refs.length) return <span className="ov-note">No exact evidence reference recorded.</span>;
@@ -1279,7 +1308,7 @@ function EvidenceRefRows({ refs, onSelect, onOpenSource, sourcesRef }: {
         return (
           <div className="lg-ref-row readiness-evidence" key={`${ref.kind}:${ref.finding_id ?? ref.op_id ?? ref.rule_id ?? i}`}>
             <span className="lg-name">{ref.kind}</span>
-            {fileId && <ProgramLink id={fileId} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
+            {fileId && <ProgramLink id={fileId} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} line={line} col={typeof ref.col === "number" ? ref.col : null} />}
             {ref.to && <span className="xf-pos-item">→ {String(ref.to)}</span>}
             {line != null && <span className="xf-pos-item">L{line}</span>}
             {ref.code && <span className="diag-code">{String(ref.code)}{ref.classification ? ` · ${String(ref.classification)}` : ""}</span>}
@@ -1300,7 +1329,7 @@ function EvidenceRefRows({ refs, onSelect, onOpenSource, sourcesRef }: {
 function MigrationReadinessProjectView({ assessment, onSelect, onOpenSource, sourcesRef }: {
   assessment: MigrationReadiness;
   onSelect: (id: string) => void;
-  onOpenSource: (path: string, content: string) => void;
+  onOpenSource: (path: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
 }) {
   const project = assessment.project;
@@ -1327,6 +1356,14 @@ function MigrationReadinessProjectView({ assessment, onSelect, onOpenSource, sou
           <dt>Not assessable</dt><dd>{project.counts_by_state.not_assessable}</dd>
         </dl>
         <p className="ov-note">Counts are state totals, not a project score. A ready program does not make the whole project ready.</p>
+        <dl className="pj-state-legend">
+          <dt><ReadinessStateChip state="ready_for_planning" /></dt>
+          <dd>Current M1–M9 records meet the check to begin detailed planning within represented scope only.</dd>
+          <dt><ReadinessStateChip state="investigation_required" /></dt>
+          <dd>Recorded rejection, risk, unsupported construct, or unresolved relation needs investigation first.</dd>
+          <dt><ReadinessStateChip state="not_assessable" /></dt>
+          <dd>Required evidence is missing. This means unknown—not clean, low risk, or rejected source.</dd>
+        </dl>
         {project.programs_with_most_investigation_requirements.length > 0 && (
           <div className="lg-unsup">
             <span className="df-block-title">program investigation queue (distinct blocker count; not a risk ranking)</span>
@@ -1486,7 +1523,7 @@ function ProgramReadinessDetail({ report, workPackages, onSelect, onOpenWorkPack
   workPackages: MigrationWorkPackage[];
   onSelect: (id: string) => void;
   onOpenWorkPackage: (id: string) => void;
-  onOpenSource: (path: string, content: string) => void;
+  onOpenSource: (path: string, content: string, line?: number | null, col?: number | null) => void;
   sourcesRef?: Record<string, string>;
 }) {
   const related = workPackages.filter((w) => report.work_package_ids.includes(w.work_package_id));
@@ -1799,6 +1836,21 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
         <button className="btn" onClick={() => dirInputRef.current?.click()} disabled={busy}>
           Upload directory…
         </button>
+        <details className="pj-demo-menu">
+          <summary className="btn">Illustrative state cases</summary>
+          <div className="pj-demo-options">
+            <p>Controlled examples, not customer code. Each runs through the normal project API and M10 rules.</p>
+            <button className="btn" disabled={busy} onClick={() => void loadReadinessCase("ready")}>
+              Ready · synthetic supported source
+            </button>
+            <button className="btn" disabled={busy} onClick={() => void loadReadinessCase("investigation")}>
+              Investigate · existing GLUPDATE risk source
+            </button>
+            <button className="btn" disabled={busy} onClick={() => void loadReadinessCase("not_assessable")}>
+              Not assessable · controlled no-source input
+            </button>
+          </div>
+        </details>
         <input
           ref={dirInputRef}
           type="file"
@@ -1816,7 +1868,9 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
         />
         {env && (
           <span className="pj-summary">
-            {env.project.name} · {env.files.length} files ·{" "}
+            {env.project.name} · {env.files.length} indexed files ·{" "}
+            {env.summary.programs} programs · {env.summary.copybooks} copybooks ·{" "}
+            {env.skipped.length} skipped ·{" "}
             {env.coverage.dependencies_resolved as number} resolved ·{" "}
             {env.coverage.dependencies_unresolved as number} unresolved ·{" "}
             {env.coverage.dependencies_ambiguous as number} ambiguous ·{" "}
@@ -1834,21 +1888,27 @@ function MappingCard({ m, onSelect }: { m: CrossFileMapping; onSelect: (id: stri
         )}
       </div>
 
-      {error && <div className="system-notice">Project analysis failed — {error}</div>}
+      {error && <div className="system-notice" role="alert">Project analysis failed — {error}</div>}
+      {env && demoNote && (
+        <div className="system-notice pj-demo-notice" role="status">
+          <strong>Illustrative controlled case, not customer code.</strong> {demoNote}
+          <button className="btn" onClick={() => void loadExample()} disabled={busy}>Return to flagship sample</button>
+        </div>
+      )}
 
       {!env && !busy && (
         <div className="editor-empty">
           <div className="card">
             <h2>Analyze a whole COBOL project</h2>
             <p>
-              Point NecroSpec at a directory of <code>.cbl</code>/<code>.cob</code>{" "}
-              programs and <code>.cpy</code> copybooks. It discovers COPY and
-              CALL relationships from the source, resolves them against the
-              project, flags missing, ambiguous and dynamic references, and
-              shows impact per file — every relationship with its evidence.
-              COPY and CALL are outside the frozen single-file grammar, so
-              files containing them are reported as rejected for full
-              analysis while their dependencies are still mapped.
+              Understand legacy code. Expose hidden complexity. Modernise with evidence.
+              NecroSpec inventories fixed-format <code>.cbl</code>/<code>.cob</code>{" "}
+              programs and <code>.cpy</code> copybooks, traces supported source and
+              dependency evidence, surfaces risks and unsupported constructs, and
+              reports planning readiness. This is static analysis of the frozen
+              Rev6.4.2 subset—not complete COBOL support, translation or runtime proof.
+              COPY and CALL are outside the single-file grammar; project scans still
+              map those relationships while marking full-file parsing as rejected.
             </p>
             <div className="actions">
               <button className="btn btn-primary" onClick={() => void loadExample()}>

@@ -54,7 +54,7 @@ export function TopBar(props: {
         <span className="wordmark-mark">
           Necro<span className="tick">Spec</span>
         </span>
-        <span className="wordmark-sub">COBOL analysis workstation · Rev6.4.2 subset</span>
+        <span className="wordmark-sub">Understand legacy code. Expose hidden complexity. Modernise with evidence.</span>
       </div>
       {active && (
         <div className="header-file">

@@ -55,6 +55,9 @@ export default function App() {
   const [engineFailure, setEngineFailure] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
   const [caret, setCaret] = useState<{ line: number; col: number }>({ line: 1, col: 1 });
+  const [pendingSourceJump, setPendingSourceJump] = useState<{
+    filename: string; line: number; col?: number | null;
+  } | null>(null);
   const [railOpen, setRailOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -239,6 +242,18 @@ export default function App() {
     }
   }, []);
 
+  // Project evidence opens the exact source location after the file workspace
+  // has mounted; the immediate click handler runs while the project DOM exists.
+  useEffect(() => {
+    if (!pendingSourceJump || mode !== "file" || active?.kind !== "session" ||
+        active.filename !== pendingSourceJump.filename) return;
+    const frame = window.requestAnimationFrame(() => {
+      jumpToLine(pendingSourceJump.line, pendingSourceJump.col);
+      setPendingSourceJump(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [active, mode, pendingSourceJump, jumpToLine]);
+
   const analyzed = analysis !== null && analyzedSource === active?.source && !dirty;
 
   return (
@@ -256,22 +271,7 @@ export default function App() {
         onMode={setMode}
       />
       <div className="app-body">
-        {mode === "project" ? (
-          <ProjectWorkspace
-            sourcesRef={projectSources.current}
-            onOpenSource={(filename, content) => {
-              const f: SessionFile = {
-                id: `session-${nextSessionId++}`,
-                filename,
-                source: content,
-              };
-              setSessionFiles((fs) => [...fs, f]);
-              loadSessionFile(f);
-              setMode("file");
-            }}
-          />
-        ) : (
-          <>
+        <div style={{ display: mode === "file" ? "contents" : "none" }}>
         <Rail
           open={railOpen}
           samples={samples}
@@ -355,8 +355,23 @@ export default function App() {
           open={inspectorOpen}
           onClose={() => setInspectorOpen(false)}
         />
-          </>
-        )}
+        </div>
+        <div style={{ display: mode === "project" ? "contents" : "none" }}>
+          <ProjectWorkspace
+            sourcesRef={projectSources.current}
+            onOpenSource={(filename, content, line, col) => {
+              const f: SessionFile = {
+                id: `session-${nextSessionId++}`,
+                filename,
+                source: content,
+              };
+              setSessionFiles((fs) => [...fs, f]);
+              loadSessionFile(f);
+              setPendingSourceJump(line != null ? { filename, line, col } : null);
+              setMode("file");
+            }}
+          />
+        </div>
       </div>
       <StatusBar
         health={health}

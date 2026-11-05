@@ -9,6 +9,11 @@ GET  /api/samples   -> sample corpus metadata (id, filename, title, origin,
 POST /api/analyze   -> body {"source": str, "filename": str}
                        -> full NecroSpec analysis envelope
 GET  /api/engine    -> engine metadata (supported subset description)
+GET  /api/project/example -> existing evidence-rich sample project
+GET  /api/project/readiness-examples -> labelled controlled state cases
+POST /api/project -> body {"name"?: str, "files": [{"path": str,
+                       "content"?: str, "error"?: str}]}; error entries
+                       preserve unreadable-input evidence in the envelope
 
 Static: serves app/web_dist (the built frontend) with SPA fallback to
 index.html for client-side routes.
@@ -19,6 +24,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -139,6 +145,42 @@ class Handler(BaseHTTPRequestHandler):
                                     "with explicit diagnostics; success is never "
                                     "fabricated",
             })
+        elif path == "/api/project/readiness-examples":
+            examples_root = Path(APP_DIR).parent / "examples"
+            ready_source = examples_root / "illustrative-readiness" / "READY.cbl"
+            risk_source = examples_root / "sample-project" / "src" / "GLUPDATE.cbl"
+            if not ready_source.is_file() or not risk_source.is_file():
+                self._send_error_json(404, "NO_READINESS_EXAMPLES",
+                                      "controlled readiness examples are missing")
+                return
+            self._send_json({
+                "disclaimer": "Controlled illustrative cases, not customer code. "
+                              "Each case is analyzed by the normal project API and "
+                              "the existing M10 rules.",
+                "cases": [
+                    {
+                        "id": "ready",
+                        "name": "Illustrative — supported planning case",
+                        "description": "Synthetic source; accepted within the represented subset, with no recorded planning blocker. Not migration approval.",
+                        "files": [{"path": "src/READY.cbl",
+                                   "content": ready_source.read_text(encoding="utf-8")}],
+                    },
+                    {
+                        "id": "investigation",
+                        "name": "Illustrative — source risk case",
+                        "description": "Unmodified GLUPDATE sample source; inspect its SEM_PRECISION_LOSS evidence.",
+                        "files": [{"path": "src/GLUPDATE.cbl",
+                                   "content": risk_source.read_text(encoding="utf-8")}],
+                    },
+                    {
+                        "id": "not_assessable",
+                        "name": "Illustrative — no-source input gap",
+                        "description": "Controlled project-level input gap. No program source is represented; this is not a real read failure or a per-program state.",
+                        "files": [{"path": "src/UNREADABLE.cbl",
+                                   "error": "Controlled demonstration: source intentionally omitted; not an observed read failure."}],
+                    },
+                ],
+            })
         elif path == "/api/project/example":
             if not os.path.isdir(EXAMPLE_PROJECT):
                 self._send_error_json(404, "NO_EXAMPLE_PROJECT",
@@ -193,7 +235,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_error_json(422, "BAD_PROJECT",
                                       "each file needs string path and content")
                 return
-            entries.append({"path": f["path"], "content": f.get("content")})
+            if isinstance(f.get("error"), str):
+                entries.append({"path": f["path"], "error": f["error"]})
+            else:
+                entries.append({"path": f["path"], "content": f.get("content")})
         name = req.get("name") if isinstance(req.get("name"), str) else "project"
         result = analyze_project(name, entries)
         # embed per-file impact so the API stays stateless

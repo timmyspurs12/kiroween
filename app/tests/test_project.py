@@ -373,6 +373,10 @@ def test_api_project_and_example_endpoints():
         assert ex["name"] == "sample-project" and len(ex["files"]) == 18
         r = _post_project(base, {"name": ex["name"], "files": ex["files"]})
         assert r["schema_version"] == 8  # v8 adds migration readiness
+        assert "migration_readiness" in r
+        assert sum(r["migration_readiness"]["project"]["counts_by_state"].values()) == 12
+        repeated = _post_project(base, {"name": ex["name"], "files": ex["files"]})
+        assert json.dumps(r, sort_keys=True) == json.dumps(repeated, sort_keys=True)
         assert len(r["edges"]) == 18
         assert len(r["impact"]) == 18
         imp = r["impact"]["copybooks/Q.cpy"]

@@ -864,15 +864,41 @@ export interface ProjectEnvelope {
   impact?: Record<string, ProjectImpact>;
 }
 
-export async function getExampleProject(): Promise<{ name: string; files: { path: string; content: string }[] }> {
+export interface ProjectInputEntry {
+  path: string;
+  content?: string;
+  error?: string;
+}
+
+export interface ExampleProjectResponse {
+  name: string;
+  files: { path: string; content: string }[];
+  errors: { path: string; error: string }[];
+}
+
+export interface ReadinessDemoCase {
+  id: "ready" | "investigation" | "not_assessable";
+  name: string;
+  description: string;
+  files: ProjectInputEntry[];
+}
+
+export async function getExampleProject(): Promise<ExampleProjectResponse> {
   const res = await fetch("/api/project/example");
   if (!res.ok) await readError(res);
-  return (await res.json()) as { name: string; files: { path: string; content: string }[] };
+  return (await res.json()) as ExampleProjectResponse;
+}
+
+export async function getReadinessExamples(): Promise<ReadinessDemoCase[]> {
+  const res = await fetch("/api/project/readiness-examples");
+  if (!res.ok) await readError(res);
+  const body = (await res.json()) as { cases: ReadinessDemoCase[] };
+  return body.cases;
 }
 
 export async function analyzeProject(
   name: string,
-  files: { path: string; content: string }[],
+  files: ProjectInputEntry[],
 ): Promise<ProjectEnvelope> {
   const res = await fetch("/api/project", {
     method: "POST",

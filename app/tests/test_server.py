@@ -64,6 +64,56 @@ def test_samples_endpoint():
     assert fields <= set(body["samples"][0].keys())
 
 
+def test_project_api_preserves_controlled_unreadable_input_and_schema():
+    status, body = post("/api/project", {
+        "name": "controlled-no-source",
+        "files": [{
+            "path": "src/UNREADABLE.cbl",
+            "error": "Controlled demonstration: source intentionally omitted.",
+        }],
+    })
+    assert status == 200
+    assert body["schema_version"] == 8
+    assert body["files"] == []
+    assert body["skipped"] == [{
+        "path": "src/UNREADABLE.cbl",
+        "reason": "unreadable: Controlled demonstration: source intentionally omitted.",
+        "code": "DEP_FILE_UNREADABLE",
+    }]
+    readiness = body["migration_readiness"]
+    assert readiness["project"]["readiness_state"] == "not_assessable"
+    assert readiness["project"]["skipped_inputs"][0]["path"] == "src/UNREADABLE.cbl"
+
+
+def test_readiness_demo_cases_use_normal_project_api_and_rules():
+    status, body = get("/api/project/readiness-examples")
+    assert status == 200
+    assert "not customer code" in body["disclaimer"].lower()
+    expected = {
+        "ready": "ready_for_planning",
+        "investigation": "investigation_required",
+        "not_assessable": "not_assessable",
+    }
+    assert {case["id"] for case in body["cases"]} == set(expected)
+    for case in body["cases"]:
+        status, result = post("/api/project", {
+            "name": case["name"], "files": case["files"],
+        })
+        assert status == 200
+        assert result["schema_version"] == 8
+        assert result["migration_readiness"]["project"]["readiness_state"] == expected[case["id"]]
+    investigation = next(c for c in body["cases"] if c["id"] == "investigation")
+    risk_result = post("/api/project", {
+        "name": investigation["name"], "files": investigation["files"],
+    })[1]
+    risk_program = risk_result["migration_readiness"]["programs"][0]
+    assert any(ref.get("code") == "SEM_PRECISION_LOSS"
+               and ref.get("classification") == "risk"
+               for ref in risk_program["dimensions"]["data_integrity"]["evidence_refs"])
+    no_source = next(c for c in body["cases"] if c["id"] == "not_assessable")
+    assert "not a real read failure" in no_source["description"].lower()
+
+
 def test_analyze_clean_program():
     status, body = post("/api/analyze", {
         "source": SAMPLES[0]["source"], "filename": "EX1FEE.cbl",

@@ -241,6 +241,23 @@ schema grows additively from 7 → 8; single-file response remains unchanged.
 Classification and counting rules are recorded in the
 `migration-readiness-classification` assumption.
 
+### Flagship evaluation workflow (Milestone 11)
+
+NecroSpec's positioning is **Understand legacy code. Expose hidden
+complexity. Modernise with evidence.** Start in Project mode with
+**Load example project** to inspect the unchanged 18-file sample through the
+real API, then move from project overview to Migration Readiness, a work
+package, and its source location. The project API preserves explicit
+unreadable-input entries so they remain visible as skipped evidence instead
+of disappearing during ingestion. The toolbar's clearly labelled
+illustrative cases exercise all three project-level readiness states through
+the same `/api/project` endpoint; their synthetic or controlled-input
+limitations are identified in the UI and in
+[`M11_DEMONSTRATION.md`](M11_DEMONSTRATION.md). They are not customer
+applications. [`PRODUCT_EVALUATION.md`](PRODUCT_EVALUATION.md) separates
+current demonstrated capability from unsupported scope and questions that
+require customer validation. No browser visual-verification claim is made.
+
 ### Command-line use (batch / CI)
 
 ```bash
