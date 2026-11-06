@@ -102,6 +102,25 @@ try {
   await waitFor(() => (window.document.body.textContent || "").includes("sample-project") &&
     q(".pj-files .sample-item"), "flagship project analysis");
   check("Flagship sample loads through the project API", (window.document.body.textContent || "").includes("12 programs"));
+
+  const dependencySection = [...window.document.querySelectorAll(".pj-detail .ov-section")]
+    .find((section) => section.querySelector("h3")?.textContent === "DEPENDENCIES");
+  const dependencyRow = [...(dependencySection?.querySelectorAll(".lg-ref-row") || [])]
+    .find((row) => row.textContent?.includes('CALL "GLUPDATE" USING WS-TOTAL'));
+  const dependencySourceLink = dependencyRow?.querySelector(".ov-file-link .ov-source-link");
+  check("M9 CALL dependency exposes its recorded source line", Boolean(dependencySourceLink) &&
+    dependencySourceLink.textContent?.trim() === "open L16");
+  dependencySourceLink?.click();
+  await waitFor(() => q(".code-input") &&
+    (q(".header-file")?.textContent || "").includes("AUDTOTAL.cbl"), "M9 dependency source handoff");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const dependencyEditor = q(".code-input");
+  const dependencyLine = dependencyEditor?.value.slice(0, dependencyEditor.selectionStart).split("\n").length;
+  check("M9 dependency source action opens AUDTOTAL.cbl at line 16", dependencyLine === 16,
+    `selected line=${dependencyLine}`);
+  clickButton((t) => t === "Project");
+  await waitFor(() => q(".pj-pane")?.parentElement?.style.display === "contents", "return from M9 dependency");
+
   await openReadiness();
   check("Real sample's actual investigation-only distribution remains visible",
     (window.document.body.textContent || "").includes("Investigation required12"));

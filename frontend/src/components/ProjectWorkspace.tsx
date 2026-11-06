@@ -1037,7 +1037,7 @@ function ProjectOverviewView({ ov, assumptions, onSelect, onOpenSource, sourcesR
             <span className="df-block-title">resolved dependency evidence</span>
             {deps.resolved_edges.map((e, i) => (
               <div className="lg-ref-row" key={`${e.from}:${e.line}:${i}`}>
-                <ProgramLink id={e.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />
+                <ProgramLink id={e.from} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} line={e.line} col={e.col} />
                 <span className="xf-pos-item">→ {e.to ?? e.target} ({e.kind}, L{e.line})</span>
                 {e.to && <ProgramLink id={e.to} onSelect={onSelect} onOpenSource={onOpenSource} sourcesRef={sourcesRef} />}
                 <span className="pj-rel-ev">{e.evidence}</span>
